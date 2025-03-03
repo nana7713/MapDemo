@@ -14,6 +14,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk{
+            abiFilters += listOf("armeabi-v7a", "x86", "arm64-v8a", "x86_64", "armeabi")
+        }
 
     }
 
@@ -52,6 +55,11 @@ dependencies {
     // No additional plugins are necessary
     annotationProcessor("androidx.room:room-compiler:$room_version")
     implementation("com.github.bumptech.glide:glide:4.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
 
-
+}
+buildscript {
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.3.0-rc01")
+    }
 }
