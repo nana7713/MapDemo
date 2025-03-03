@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+android:layout_width="match_parent"
+android:orientation="horizontal"
+android:layout_height="wrap_content"
+android:layout_marginTop="10dp">
+<LinearLayout
+    android:id="@+id/ll_home"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:gravity="center"
+    >
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:id="@+id/iv_home"
+        android:src="@drawable/home_selector"
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="首页"
+        android:id="@+id/tv_home"
+        android:textSize="20sp"/>
+</LinearLayout>
+<LinearLayout
+    android:id="@+id/ll_find"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:gravity="center"
+    >
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:id="@+id/iv_find"
+        android:src="@drawable/find_selector"
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="发现"
+        android:id="@+id/tv_find"
+        android:textSize="20sp"/>
+</LinearLayout>
+<LinearLayout
+    android:id="@+id/ll_mine"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:gravity="center"
+    >
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:id="@+id/iv_mine"
+        android:src="@drawable/mine_selector"
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="我的"
+        android:id="@+id/tv_mine"
+        android:textSize="20sp"/>
+</LinearLayout>
+</LinearLayout>
