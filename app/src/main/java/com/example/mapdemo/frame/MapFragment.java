@@ -69,6 +69,7 @@ public class MapFragment extends Fragment  {
     private String mParam1;
     private String mParam2;
     TextView locationInfo;//用于显示定位信息
+    private boolean isFirstLoc=true;
     LocationClient mlocationClient;//声明一个LocationClient类型的变量，用于管理百度地图的定位功能
     MapView mMapView;//用于显示百度地图
     BaiduMap mBaiduMap = null;//管理百度地图的功能
@@ -326,7 +327,8 @@ public class MapFragment extends Fragment  {
                                     poiResult.setCurrentPageNum(curPage + 1);
                                     String city = mCurlocation.getCity();
 
-                                    if (textV==null) Toast.makeText(getActivity(), "booo", Toast.LENGTH_SHORT).show();
+                                    String KeyWord=textV.getText().toString();
+                                    mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage+1));
                                     //搜索下一页
                                     //mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage + 1));
                                 }
@@ -413,7 +415,7 @@ public class MapFragment extends Fragment  {
 
     //监听定位结果
     private class MylocationListener extends BDAbstractLocationListener {
-        private boolean isFirstLoc=true;
+
         private boolean autoLocation=false;
         public void setAutoLocation(boolean b) {
             autoLocation=b;

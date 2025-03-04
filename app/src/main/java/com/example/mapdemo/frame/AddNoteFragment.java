@@ -16,12 +16,14 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -169,9 +171,27 @@ public class AddNoteFragment extends Fragment {
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                pickMedia.launch(new PickVisualMediaRequest.Builder()
-                        .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
-                        .build());
+                PopupMenu popupMenu=new PopupMenu(getActivity(),view);
+                popupMenu.inflate(R.menu.pop_menu);
+                popupMenu.show();//点击显示菜单
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem menuItem) {
+                        int itemId=menuItem.getItemId();
+                        if (itemId==R.id.direct_photography){
+
+
+                        }
+                        if (itemId==R.id.choose_from_album){
+                            pickMedia.launch(new PickVisualMediaRequest.Builder()
+                                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                                    .build());
+                            return true;
+                        }
+                        return AddNoteFragment.super.onOptionsItemSelected(menuItem);
+                    }
+                });
+
             }
         });
 
