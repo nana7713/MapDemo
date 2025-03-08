@@ -34,4 +34,5 @@ public interface NoteDao {
     void delete(NoteEntity noteEntity);
     @Query("delete from note where id=:noteID")
     void deleteById(long noteID);
+
 }

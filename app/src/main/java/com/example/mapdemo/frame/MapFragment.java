@@ -327,9 +327,10 @@ public class MapFragment extends Fragment  {
                                     poiResult.setCurrentPageNum(curPage + 1);
                                     String city = mCurlocation.getCity();
 
-                                    if (textV==null) Toast.makeText(getActivity(), "booo", Toast.LENGTH_SHORT).show();
+                                    //if (textV==null) Toast.makeText(getActivity(), "booo", Toast.LENGTH_SHORT).show();
                                     //搜索下一页
-                                    //mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage + 1));
+                                    String KeyWord = textV.getText().toString();
+                                    mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage + 1));
                                 }
                                 else{
                                     Toast.makeText(getActivity(), "已加载全部数据", Toast.LENGTH_SHORT).show();

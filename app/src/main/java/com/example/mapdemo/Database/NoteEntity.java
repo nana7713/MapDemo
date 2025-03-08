@@ -121,4 +121,15 @@ public class NoteEntity {
                 ", avatar_uri='" + avatar_uri + '\'' +
                 '}';
     }
+    @ColumnInfo(name = "latitude")
+    private Double latitude;
+    @ColumnInfo(name = "longitude")
+    private Double longitude;
+
+    // Getter和Setter方法
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 }

@@ -14,9 +14,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        ndk{
-            abiFilters += listOf("armeabi-v7a", "x86", "arm64-v8a", "x86_64", "armeabi")
-        }
+
 
     }
 
@@ -32,6 +30,18 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    ndkVersion = "25.1.8937393"
+    defaultConfig {
+        ndk {
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("libs")
+        }
     }
 }
 
@@ -56,6 +66,7 @@ dependencies {
     annotationProcessor("androidx.room:room-compiler:$room_version")
     implementation("com.github.bumptech.glide:glide:4.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation("androidx.exifinterface:exifinterface:1.3.3")
 
 }
 buildscript {
