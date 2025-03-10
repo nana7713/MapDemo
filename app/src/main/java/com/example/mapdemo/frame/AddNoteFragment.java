@@ -164,13 +164,16 @@ public class AddNoteFragment extends Fragment {
         saveWords=view.findViewById(R.id.save_words);
         note_image=view.findViewById(R.id.note_image);
         floatingActionButton=view.findViewById(R.id.floating_action_button);
+        //pickMedia是图片选择器
         pickMedia = registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
                     // Callback is invoked after the user selects a media item or closes the
                     // photo picker.
                     if (uri != null) {
+                        //这个函数在选中照片后被调用
                         Log.d("PhotoPicker", "Selected URI: " + uri);
                         noteImageUri= String.valueOf(uri);
                         Glide.with(getActivity()).load(uri).into(note_image);
+                        //glide用来渲染图片
 
                     } else {
                         Log.d("PhotoPicker", "No media selected");
@@ -198,7 +201,7 @@ public class AddNoteFragment extends Fragment {
 
         save_time = SimpleDateFormat.getDateTimeInstance().format(new Date(System.currentTimeMillis()));
         saveTime.setText(save_time);
-        Econtent.addTextChangedListener(new TextWatcher() {
+        Econtent.addTextChangedListener(new TextWatcher() {//监听字数变化
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
 

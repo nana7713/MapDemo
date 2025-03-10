@@ -165,7 +165,7 @@ public class FragmentNote extends Fragment {
     }
 
 
-    private List<NoteEntity> getLocalNote() {
+    private List<NoteEntity> getLocalNote() {//根据用户id得到数据库中对应的笔记数据
         List<NoteEntity> allNote = noteDao.findByUserID(MapApp.getUserID());
         if (allNote.size() > 0) {
             return allNote;
