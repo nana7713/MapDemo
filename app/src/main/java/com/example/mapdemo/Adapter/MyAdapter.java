@@ -3,6 +3,9 @@ package com.example.mapdemo.Adapter;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +28,8 @@ import com.example.mapdemo.R;
 
 import org.w3c.dom.Text;
 
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.List;
 
 public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
@@ -55,13 +60,21 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
     @NonNull
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
-
+        holder.position.setText(Mlist.get(position).getLongitude() +" "+ Mlist.get(position).getLatitude());
         holder.userName.setText(Mlist.get(position).getUser_name());
         holder.slogan.setText(Mlist.get(position).getUser_slogan());
         holder.title.setText(Mlist.get(position).getNote_title());
         holder.content.setText(Mlist.get(position).getNote_content());
         Glide.with(context).load(Mlist.get(position).getUser_avatar()).into(holder.avatar);
-        Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
+        //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
+        InputStream inputStream= null;
+        try {
+            inputStream = context.getContentResolver().openInputStream(Uri.parse(Mlist.get(position).getCover()));
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
+        holder.cover.setImageBitmap(bitmap);
         holder.createTime.setText(Mlist.get(position).getCreate_time());
         holder.delete.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -107,6 +120,7 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         ImageView cover;
         Button delete;
         LinearLayout itemCard;
+        TextView position;
 
 
 
@@ -122,6 +136,7 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
             delete=itemView.findViewById(R.id.deleteButton);
             itemCard=itemView.findViewById(R.id.item_card);
             cover=itemView.findViewById(R.id.cover);
+            position=itemView.findViewById(R.id.position);
         }
     }
     public interface CountInterface{

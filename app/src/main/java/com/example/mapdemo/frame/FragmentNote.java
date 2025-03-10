@@ -130,7 +130,7 @@ public class FragmentNote extends Fragment {
         for (NoteEntity noteEntity : localNote) {
             NoteCard noteCard = new NoteCard(noteEntity.id, noteEntity.user_name,
                     noteEntity.slogan, noteEntity.title, noteEntity.content, noteEntity.avatar_uri
-                    , noteEntity.note_image_uri, noteEntity.create_time);
+                    , noteEntity.note_image_uri, noteEntity.create_time,noteEntity.longitude,noteEntity.latitude,noteEntity.isDirect);
             cards.add(noteCard);
 
         }

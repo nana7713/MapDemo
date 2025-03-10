@@ -23,8 +23,15 @@ public class NoteEntity {
     public String create_time;
     @ColumnInfo(name = "avatar_uri")
     public String avatar_uri;
+    @ColumnInfo(name = "longitude")
+    public double longitude;
+    @ColumnInfo(name = "latitude")
+    public double latitude;
+    @ColumnInfo(name="isDirect")
+    public boolean isDirect;
 
-    public NoteEntity(String user_name, int userId, String slogan, String content, String title, String note_image_uri, String create_time, String avatar_uri) {
+
+    public NoteEntity(String user_name, int userId, String slogan, String content, String title, String note_image_uri, String create_time, String avatar_uri, double longitude, double latitude,boolean isDirect) {
         this.user_name = user_name;
         this.userId = userId;
         this.slogan = slogan;
@@ -33,8 +40,52 @@ public class NoteEntity {
         this.note_image_uri = note_image_uri;
         this.create_time = create_time;
         this.avatar_uri = avatar_uri;
+        this.longitude = longitude;
+        this.latitude = latitude;
+        this.isDirect=isDirect;
     }
 
+    public boolean isDirect() {
+        return isDirect;
+    }
+
+    @Override
+    public String toString() {
+        return "NoteEntity{" +
+                "id=" + id +
+                ", user_name='" + user_name + '\'' +
+                ", userId=" + userId +
+                ", slogan='" + slogan + '\'' +
+                ", content='" + content + '\'' +
+                ", title='" + title + '\'' +
+                ", note_image_uri='" + note_image_uri + '\'' +
+                ", create_time='" + create_time + '\'' +
+                ", avatar_uri='" + avatar_uri + '\'' +
+                ", longitude=" + longitude +
+                ", latitude=" + latitude +
+                ", isDirect=" + isDirect +
+                '}';
+    }
+
+    public void setDirect(boolean direct) {
+        isDirect = direct;
+    }
+
+    public double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
+    }
+
+    public double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
 
     public int getUserId() {
         return userId;
@@ -108,17 +159,4 @@ public class NoteEntity {
         this.avatar_uri = avatar_uri;
     }
 
-    @Override
-    public String toString() {
-        return "NoteEntity{" +
-                "id=" + id +
-                ", user_name='" + user_name + '\'' +
-                ", slogan='" + slogan + '\'' +
-                ", content='" + content + '\'' +
-                ", title='" + title + '\'' +
-                ", note_image_uri='" + note_image_uri + '\'' +
-                ", create_time='" + create_time + '\'' +
-                ", avatar_uri='" + avatar_uri + '\'' +
-                '}';
-    }
 }
