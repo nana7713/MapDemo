@@ -67,14 +67,18 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         holder.content.setText(Mlist.get(position).getNote_content());
         Glide.with(context).load(Mlist.get(position).getUser_avatar()).into(holder.avatar);
         //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
-        InputStream inputStream= null;
-        try {
-            inputStream = context.getContentResolver().openInputStream(Uri.parse(Mlist.get(position).getCover()));
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
+        if(Mlist.get(position).getCover()!=null){
+            InputStream inputStream= null;
+            try {
+
+                inputStream = context.getContentResolver().openInputStream(Uri.parse(Mlist.get(position).getCover()));
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+            Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
+            holder.cover.setImageBitmap(bitmap);
         }
-        Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
-        holder.cover.setImageBitmap(bitmap);
+
         holder.createTime.setText(Mlist.get(position).getCreate_time());
         holder.delete.setOnClickListener(new View.OnClickListener() {
             @Override

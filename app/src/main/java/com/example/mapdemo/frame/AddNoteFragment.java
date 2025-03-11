@@ -186,14 +186,16 @@ public class AddNoteFragment extends Fragment {
             id = getArguments().getLong("id");
             NoteEntity noteEntity = noteDao.findById(id);
             //Glide.with(getActivity()).load(noteEntity.note_image_uri).into(note_image);
-            InputStream inputStream= null;
-            try {
-                inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
+            if (noteEntity.note_image_uri != null) {
+                InputStream inputStream = null;
+                try {
+                    inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                note_image.setImageBitmap(bitmap);
             }
-            Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
-            note_image.setImageBitmap(bitmap);
         }
         if (Econtent.getText() != null) {
             saveWords.setText(getString(R.string.note_words,Econtent.getText().toString().trim().length()+""));
