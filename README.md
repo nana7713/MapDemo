@@ -1,1 +1,7 @@
-再次定位无法使用问题未解决
+1、遇到的bug及解决方案：一开始无论怎么处理，图片的经纬度都为0，后来更改了图片选择器。 改用了Intent.ACTION_OPEN_DOCUMENT。需要手动设置权限但可以处理图片的位置信息
+2、在数据库中新增了经纬度两个字段
+3、流程：在点击浮动按钮选择图片后，通过Intent.ACTION_OPEN_DOCUMENT选择图片，然后处理返回的URI。在pickMedia的回调中，获取到URI后调用handleSelectedImageWithWorkaround方法。
+接下来，handleSelectedImageWithWorkaround方法在Android 10及以上版本尝试通过MediaStore获取原始文件路径，然后使用ExifInterface读取EXIF数据。如果失败，则降级到普通的handleSelectedImage方法，通过输入流处理EXIF。
+在handleSelectedImage方法中，打开输入流，创建ExifInterface对象，提取GPS相关的标签，如TAG_GPS_LATITUDE、TAG_GPS_LATITUDE_REF等。然后检查这些标签是否存在，是否为零值，并进行坐标转换。转换后的坐标会存储在currentLatitude和currentLongitude变量中，并通过对话框显示给用户确认。
+
+

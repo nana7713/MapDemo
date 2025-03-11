@@ -95,15 +95,15 @@ public class AddNoteFragment extends Fragment {
     private Double currentLatitude;
     private Double currentLongitude;
     private Uri pendingImageUri; // 用于保存等待权限处理的图片URI
-    private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
-            new ActivityResultContracts.RequestPermission(),
+    private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(//注册一个活动结果的启动器，用于处理活动的结果，包含活动契约和回调函数
+            new ActivityResultContracts.RequestPermission(),//建立了一个ResquestPermission类型的活动契约
             isGranted -> {
                 if (isGranted) {
-                    handleImageWithPermission(pendingImageUri);
+                    handleImageWithPermission(pendingImageUri);// 处理带有权限的图片
                 } else {
                     showToast("需要位置权限来获取图片位置信息");
                     // 即使没有权限仍然加载图片，只是不处理位置信息
-                    loadImageWithoutLocation(pendingImageUri);
+                    loadImageWithoutLocation(pendingImageUri);// 处理没有权限的图片
                 }
             }
     );
@@ -165,9 +165,9 @@ public class AddNoteFragment extends Fragment {
                     // Callback is invoked after the user selects a media item or closes the
                     // photo picker.
 
-            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                Uri uri = result.getData().getData();
-                handleSelectedImageWithWorkaround(uri);
+            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {//活动成功完成并活动返回的数据不为空，result.getData()返回一个Intent对象，包含了用户选择的媒体项的信息
+                Uri uri = result.getData().getData();//获取用户选择的媒体项的URI
+                handleSelectedImageWithWorkaround(uri);//处理带有位置信息的图片
             }
                 });
         if (getArguments() != null) {
@@ -201,14 +201,14 @@ public class AddNoteFragment extends Fragment {
 
             }
         });
-
+                //点击时间监听采用了Lambada表达式
                 floatingActionButton.setOnClickListener(v -> {
-                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("image/*");
-                    //intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
-                    intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-                    pickMedia.launch(intent);
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);//打开系统的文件选择器
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);//为Intent添加一个类别，表示该文档是可打开的。这样可以确保用户选择的文件是可以被应用程序处理的
+                    intent.setType("image/*");//设置Intent的数据类型是所有图片类型
+                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);//先允许用户选择一张图片
+                    intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);//为Intent添加一个标志，表示该URI是持久的，即使应用程序被关闭，该URI仍然有效
+                    pickMedia.launch(intent);//启动活动结果的启动器，用于处理活动的结果，包含活动契约和回调函数
                 });
 
         closeButton.setOnClickListener(new View.OnClickListener() {
@@ -230,17 +230,18 @@ public class AddNoteFragment extends Fragment {
                 } else {
                     save_time = SimpleDateFormat.getDateTimeInstance().format(new Date(System.currentTimeMillis()));
                     saveTime.setText(save_time);
-                    User user = userDao.findById(MapApp.getUserID());
+                    User user = userDao.findById(MapApp.getUserID());//获取当前用户
+
                     if (is_new) {
                         NoteEntity newNote = new NoteEntity(
                                 user.getName(),
                                 MapApp.getUserID(),
-                                user.slogan,
-                                content,
-                                title,
-                                noteImageUri,
-                                save_time,
-                                user.getAvatar()
+                                user.slogan,// 新增的字段
+                                content,//输入的笔记内容
+                                title,//标题
+                                noteImageUri,//用户选择图片的uri
+                                save_time,//保存时间
+                                user.getAvatar()//头像
                         );
 
                         if (currentLatitude != null && currentLatitude != 0.0
@@ -324,7 +325,7 @@ private void handleSelectedImage(Uri uri) {
     }
 }
 
-    // 新增辅助方法
+
     private boolean isZeroDMS(String dms) {
         return dms != null && dms.equals("0/1,0/1,0/1");
     }
@@ -347,13 +348,7 @@ private void handleSelectedImage(Uri uri) {
                 .setTitle("确认位置")
                 .setMessage(String.format("检测到位置：\n纬度: %.6f\n经度: %.6f",
                         currentLatitude, currentLongitude))
-                .setPositiveButton("正确", null)
-                .setNegativeButton("重新选择", (d, w) -> {
-                    // 启动地图选择时保存当前坐标作为备选
-                   Double lastKnownLatitude = currentLatitude;
-                   Double lastKnownLongitude = currentLongitude;
-                    //showMapPicker();
-                })
+                .setPositiveButton("确认", null)
                 .show();
     }
 
@@ -365,13 +360,13 @@ private void handleSelectedImage(Uri uri) {
                 Log.e("CONVERT_DEGREE", "无效的度分秒格式: " + stringDMS);
                 return 0.0;
             }
-
+            // 调用 parseRational 方法将度、分、秒部分的字符串转换为对应的小数值
             double degrees = parseRational(dmsParts[0]);
             double minutes = parseRational(dmsParts[1]);
             double seconds = parseRational(dmsParts[2]);
 
             double result = degrees + (minutes / 60.0) + (seconds / 3600.0);
-            return ("S".equals(ref) || "W".equals(ref)) ? -result : result;
+            return ("S".equals(ref) || "W".equals(ref)) ? -result : result;//如果是南纬或西经，结果取负数
         } catch (Exception e) {
             Log.e("CONVERT_DEGREE", "转换错误: " + e.getMessage());
             return 0.0;
@@ -383,15 +378,16 @@ private void handleSelectedImage(Uri uri) {
         if (parts.length != 2) {
             throw new IllegalArgumentException("无效的数值格式: " + rational);
         }
+        // 解析分子和分母
         double numerator = Double.parseDouble(parts[0]);
         double denominator = Double.parseDouble(parts[1]);
         return numerator / denominator;
     }
 
-
+//检查媒体位置权限位置状态
     private void checkAndRequestLocationPermission(Uri uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (hasMediaLocationPermission()) {
+            if (hasMediaLocationPermission()) {//如果已经有了媒体位置权限
                 handleImageWithPermission(uri);
             } else {
                 showPermissionExplanationDialog(uri);
@@ -428,7 +424,7 @@ private void handleSelectedImage(Uri uri) {
         try {
             // 获取持久化读取权限
             requireContext().getContentResolver().takePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION//指定权限标志，表示授予读取权限
             );
 
             // 加载图片
@@ -442,16 +438,16 @@ private void handleSelectedImage(Uri uri) {
         }
     }
 
-    // 新增图片加载方法（无位置处理）
+    // 新增图片加载方法
     private void loadImageWithoutLocation(Uri uri) {
         noteImageUri = uri.toString();
-        Glide.with(requireActivity())
-                .load(uri)
+        Glide.with(requireActivity())//使用Glide库加载图片
+                .load(uri)//指定要加载的图片的URI
 
-                .into(note_image);
+                .into(note_image);//指定要将图片加载到的ImageView控件
     }
 
-    // 修改后的图片加载方法（含位置处理）
+
     private void loadImageWithLocation(Uri uri) {
         noteImageUri = uri.toString();
         Glide.with(requireActivity())
@@ -469,23 +465,25 @@ private void handleSelectedImage(Uri uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // 特殊处理Android 10+的原始文件访问
             try {
-                InputStream input = requireContext().getContentResolver().openInputStream(uri);
-                Bitmap bitmap = BitmapFactory.decodeStream(input);
+                // 尝试直接获取EXIF数据
+                InputStream input = requireContext().getContentResolver().openInputStream(uri);//打开一个输入流，用于读取指定URI指向的媒体内容
+                Bitmap bitmap = BitmapFactory.decodeStream(input);//使用BitmapFactory类的decodeStream方法将输入流解码为Bitmap对象
                 if (input != null) input.close();
 
                 // 尝试通过MediaStore获取原始路径
-                String[] projection = {MediaStore.Images.ImageColumns.DATA};
+                String[] projection = {MediaStore.Images.ImageColumns.DATA};//定义一个字符串数组projection，用于指定要查询的列名
                 Cursor cursor = requireContext().getContentResolver().query(
-                        uri, projection, null, null, null);
+                        uri, projection, null, null, null);//使用getContentResolver()方法获取ContentResolver对象，然后调用query()方法查询指定的URI，返回一个Cursor对象
+                    //uri所选图片的uri,projection：一个字符串数组，指定要查询的列。在这个例子中，projection 只包含一列，即 MediaStore.Images.ImageColumns.DATA，它代表图片的文件路径。
 
                 if (cursor != null && cursor.moveToFirst()) {
-                    int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.ImageColumns.DATA);
-                    String filePath = cursor.getString(columnIndex);
+                    int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.ImageColumns.DATA);//获取指定列的索引
+                    String filePath = cursor.getString(columnIndex);//使用getColumnIndexOrThrow()方法获取指定列的索引，然后使用getString()方法获取该列的值
                     cursor.close();
 
                     if (new File(filePath).exists()) {
-                        ExifInterface exif = new ExifInterface(filePath);
-                        processRealExif(exif);
+                        ExifInterface exif = new ExifInterface(filePath);//使用ExifInterface类的构造函数创建一个ExifInterface对象，该对象用于读取和写入EXIF数据
+                        processRealExif(exif);//使用processRealExif()方法处理ExifInterface对象，该方法用于提取和处理EXIF数据
                         return;
                     }
                 }
@@ -494,13 +492,13 @@ private void handleSelectedImage(Uri uri) {
             }
         }
 
-        // 降级处理
+        // 前面没成功就进行降级处理
         handleSelectedImage(uri);
     }
     private void processRealExif(ExifInterface exif) {
         // 提取EXIF数据
-        String latStr = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE);
-        String latRef = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE_REF);
+        String latStr = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE);//纬度值
+        String latRef = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE_REF);//纬度参考信息
         String lngStr = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE);
         String lngRef = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF);
 

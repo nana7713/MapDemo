@@ -121,7 +121,7 @@ public class NoteEntity {
                 ", avatar_uri='" + avatar_uri + '\'' +
                 '}';
     }
-    @ColumnInfo(name = "latitude")
+    @ColumnInfo(name = "latitude")//自定义列名
     private Double latitude;
     @ColumnInfo(name = "longitude")
     private Double longitude;
