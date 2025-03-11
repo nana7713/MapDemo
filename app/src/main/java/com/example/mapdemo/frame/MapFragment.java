@@ -7,7 +7,10 @@ import static com.baidu.mapapi.map.BaiduMap.MAP_TYPE_SATELLITE;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -36,14 +39,21 @@ import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.SDKInitializer;
 import com.baidu.mapapi.map.BaiduMap;
+import com.baidu.mapapi.map.BitmapDescriptor;
+import com.baidu.mapapi.map.BitmapDescriptorFactory;
+import com.baidu.mapapi.map.GroundOverlayOptions;
 import com.baidu.mapapi.map.InfoWindow;
 import com.baidu.mapapi.map.MapPoi;
 import com.baidu.mapapi.map.MapStatus;
+import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.Marker;
+import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationData;
+import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.model.LatLngBounds;
 import com.baidu.mapapi.search.core.PoiInfo;
 import com.baidu.mapapi.search.poi.OnGetPoiSearchResultListener;
 import com.baidu.mapapi.search.poi.PoiCitySearchOption;
@@ -52,15 +62,22 @@ import com.baidu.mapapi.search.poi.PoiDetailSearchResult;
 import com.baidu.mapapi.search.poi.PoiIndoorResult;
 import com.baidu.mapapi.search.poi.PoiResult;
 import com.baidu.mapapi.search.poi.PoiSearch;
+import com.baidu.mapapi.utils.CoordinateConverter;
+import com.example.mapdemo.CoordinateUtils;
+import com.example.mapdemo.Database.NoteDao;
+import com.example.mapdemo.Database.NoteEntity;
+import com.example.mapdemo.MapApp;
 import com.example.mapdemo.PoiAdapter;
 import com.example.mapdemo.PoiOverlay;
 import com.example.mapdemo.R;
 
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class MapFragment extends Fragment  {
+public class MapFragment extends Fragment {
 
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
@@ -69,7 +86,7 @@ public class MapFragment extends Fragment  {
     private String mParam1;
     private String mParam2;
     TextView locationInfo;//用于显示定位信息
-    private boolean isFirstLoc=true;
+    private boolean isFirstLoc = true;
     LocationClient mlocationClient;//声明一个LocationClient类型的变量，用于管理百度地图的定位功能
     MapView mMapView;//用于显示百度地图
     BaiduMap mBaiduMap = null;//管理百度地图的功能
@@ -80,6 +97,7 @@ public class MapFragment extends Fragment  {
     private int mCurrentPage = 0; // 当前页码
     ListView listView;
     TextView textV;
+    NoteDao noteDao = MapApp.getAppDb().noteDao();
     private List<PoiInfo> mAllPoiList = new ArrayList<>();//所有POI数据
 
     public MapFragment() {
@@ -134,7 +152,7 @@ public class MapFragment extends Fragment  {
         //启用定位图层（显示蓝点）
         mBaiduMap.setMyLocationEnabled(true);
         listView = view.findViewById(R.id.searchResult);
-        textV= view.findViewById(R.id.inputText);
+        textV = view.findViewById(R.id.inputText);
         initPoiOverlay();//Poi覆盖物初始化
         //设置地图监听器
         mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
@@ -143,6 +161,7 @@ public class MapFragment extends Fragment  {
             public void onMapClick(LatLng latLng) {
                 mBaiduMap.hideInfoWindow();
             }//隐藏地图上的信息窗口
+
             @Override
             public void onMapPoiClick(MapPoi mapPoi) {
             }
@@ -259,7 +278,57 @@ public class MapFragment extends Fragment  {
             }
         });
 
+        List<NoteEntity> AllNotes = noteDao.getAll();
+        for (NoteEntity noteEntity : AllNotes) {
+            if (noteEntity.note_image_uri != null) {
+                //定义Ground的显示地理范围
+
+                InputStream inputStream = null;
+                try {
+                    inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                if (bitmap != null) {
+                    // 定义目标宽度和高度
+                    int targetWidth = 150; // 目标宽度（单位：像素）
+                    int targetHeight = 150; // 目标高度（单位：像素）
+
+// 缩放 Bitmap
+                    bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, false);
+                    CoordinateConverter converter = new CoordinateConverter();
+                    converter.from(CoordinateConverter.CoordType.COMMON); // 设置原始坐标类型（GPS 或 COMMON）
+
+// 设置原始坐标
+                    converter.coord(new LatLng(noteEntity.latitude, noteEntity.longitude));
+
+// 转换为百度坐标（BD-09）
+                    LatLng point = converter.convert();
+
+
+//构建Marker图标
+                    BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory
+                            .fromBitmap(bitmap);
+//构建MarkerOption，用于在地图上添加Marker
+                    OverlayOptions option = new MarkerOptions()
+                            .position(point) //必传参数
+                            .icon(bitmapDescriptor) //必传参数
+                            .draggable(true)
+                            .perspective(true)
+//设置平贴地图，在地图中双指下拉查看效果
+                            .flat(true)
+                            .alpha(1f);
+//在地图上添加Marker，并显示
+                    mBaiduMap.addOverlay(option);
+                    // 设置地图缩放级别
+
+
+                }
+            }
+        }
     }
+
     OnGetPoiSearchResultListener poiSearchResultListener = new OnGetPoiSearchResultListener() {
         @Override
         public void onGetPoiResult(PoiResult poiResult) {
@@ -327,12 +396,11 @@ public class MapFragment extends Fragment  {
                                     poiResult.setCurrentPageNum(curPage + 1);
                                     String city = mCurlocation.getCity();
 
-                                    String KeyWord=textV.getText().toString();
-                                    mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage+1));
+                                    String KeyWord = textV.getText().toString();
+                                    mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage + 1));
                                     //搜索下一页
                                     //mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage + 1));
-                                }
-                                else{
+                                } else {
                                     Toast.makeText(getActivity(), "已加载全部数据", Toast.LENGTH_SHORT).show();
                                 }
                             }
@@ -370,7 +438,8 @@ public class MapFragment extends Fragment  {
 
     @SuppressLint("MissingSuperCall")
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1) {
             // 只检查定位权限是否被授予
@@ -394,6 +463,7 @@ public class MapFragment extends Fragment  {
         mlocationClient.start();//启动百度地图SDK中的定位客户端
 
     }
+
     //设置百度地图定位的各种参数
     private void initLocation() {
         LocationClientOption option = new LocationClientOption();//配置百度地图定位的各种参数
@@ -416,18 +486,20 @@ public class MapFragment extends Fragment  {
     //监听定位结果
     private class MylocationListener extends BDAbstractLocationListener {
 
-        private boolean autoLocation=false;
+        private boolean autoLocation = false;
+
         public void setAutoLocation(boolean b) {
-            autoLocation=b;
+            autoLocation = b;
         }
+
         //根据定位按钮修改
         @Override
         public void onReceiveLocation(BDLocation bdLocation) {
             //mapView 销毁后不在处理新接收的位置
-            if (bdLocation == null || mMapView == null){
+            if (bdLocation == null || mMapView == null) {
                 return;
             }
-            int type=bdLocation.getLocType();
+            int type = bdLocation.getLocType();
             //构建MyLocaltionData对象，通过MyLocationData.Builder设置经纬度
             MyLocationData locData = new MyLocationData.Builder()
                     //设置定位精度
@@ -435,7 +507,7 @@ public class MapFragment extends Fragment  {
                     // 此处设置开发者获取到的方向信息，顺时针0-360
                     .direction(bdLocation.getDirection()).latitude(bdLocation.getLatitude())
                     .longitude(bdLocation.getLongitude()).build();
-            BaiduMap bmap=mMapView.getMap();//获取地图实例
+            BaiduMap bmap = mMapView.getMap();//获取地图实例
             bmap.setMyLocationData(locData);//将定位数据设置到地图上
             /**
              *当首次定位或手动发起定位时，要放大地图，便于观察具体的位置
@@ -444,11 +516,11 @@ public class MapFragment extends Fragment  {
              */
 
 
-            if (isFirstLoc||autoLocation) {
+            if (isFirstLoc || autoLocation) {
                 //将首次定位标志设置为false
                 isFirstLoc = false;
                 //将手动发起定位标志设置为false
-                autoLocation=false;
+                autoLocation = false;
                 //创建Latlng对象，表示当前位置的经纬度
 
 
@@ -490,7 +562,7 @@ public class MapFragment extends Fragment  {
     //初始化覆盖物
     private void initPoiOverlay() {
         // 初始化 PoiOverlay
-        mPoiOverlay = new PoiOverlay(mBaiduMap,getActivity(),mAllPoiList) {
+        mPoiOverlay = new PoiOverlay(mBaiduMap, getActivity(), mAllPoiList) {
             @Override
             // 覆写此方法以改变默认点击行为
             public boolean onPoiClick(int index) {
@@ -516,7 +588,6 @@ public class MapFragment extends Fragment  {
     }
 
 
-
     // 显示 PoiInfo 的信息窗口
     private void showPoiInfoWindow(PoiInfo poi) {
         //隐藏当前显示的信息窗口
@@ -534,7 +605,7 @@ public class MapFragment extends Fragment  {
         address.setText(poi.getAddress());
         //计算信息窗口的偏移量
         Point screenPosition = mBaiduMap.getProjection().toScreenLocation(poi.getLocation());
-        int yOffset = (screenPosition.y > mMapView.getHeight()/2) ? -200 : 200;
+        int yOffset = (screenPosition.y > mMapView.getHeight() / 2) ? -200 : 200;
         // 创建信息窗口
         InfoWindow mInfoWindow = new InfoWindow(infoWindow, poi.getLocation(), -150);
 

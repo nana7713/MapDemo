@@ -300,7 +300,7 @@ public class AddNoteFragment extends Fragment {
     }
 
     private void doTake() {
-        String filename = "test.png"; //自定义的照片名称
+        String filename = save_time; //自定义的照片名称
         File outputImage = new File(getActivity().getExternalCacheDir(),filename);  //拍照后照片存储路径
         try {if (outputImage.exists()){
 
