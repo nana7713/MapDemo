@@ -12,33 +12,54 @@ import android.graphics.BitmapFactory;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.os.Environment;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.baidu.location.BDAbstractLocationListener;
+import com.baidu.location.BDLocation;
+import com.baidu.location.LocationClient;
+import com.baidu.location.LocationClientOption;
+import com.baidu.mapapi.map.BaiduMap;
+import com.baidu.mapapi.map.MapStatus;
+import com.baidu.mapapi.map.MapStatusUpdateFactory;
+import com.baidu.mapapi.map.MyLocationData;
+import com.baidu.mapapi.model.LatLng;
 import com.bumptech.glide.Glide;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
@@ -49,6 +70,10 @@ import com.example.mapdemo.R;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -79,6 +104,8 @@ public class AddNoteFragment extends Fragment {
     private EditText Econtent;
     private ImageView note_image;
     private String noteImageUri;
+    private double latitude,longitude;
+    private Uri imageUri;
     NoteDao noteDao = MapApp.getAppDb().noteDao();
     UserDao userDao=MapApp.getAppDb().userDao();
     private FragmentManager fragmentManager;
@@ -89,6 +116,9 @@ public class AddNoteFragment extends Fragment {
 
     // 新增权限请求码
     private static final int MEDIA_LOCATION_PERMISSION_CODE = 2021;
+    private LocationClient mLocationClient;
+    boolean isDirect=false;
+    //private ActivityResultLauncher<PickVisualMediaRequest> pickMedia;
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
@@ -149,6 +179,17 @@ public class AddNoteFragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        try {//在添加笔记界面被创建的同时初始化定位服务，准备获取直接拍照时的经纬度，后续可以考虑将定位服务建立在底层Activity
+            mLocationClient = new LocationClient(getActivity().getApplicationContext());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        LocationClientOption option = new LocationClientOption();
+        option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy);
+        mLocationClient.start();
+        MyLocationListener myLocationListener = new MyLocationListener();
+        //自定义的位置监听器注册到百度地图定位客户端
+        mLocationClient.registerLocationListener(myLocationListener);
         super.onViewCreated(view, savedInstanceState);
         fragmentManager = getFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -176,7 +217,17 @@ public class AddNoteFragment extends Fragment {
             is_new = getArguments().getBoolean("is_new");//判断是否是新添加的笔记
             id = getArguments().getLong("id");
             NoteEntity noteEntity = noteDao.findById(id);
-            Glide.with(getActivity()).load(noteEntity.note_image_uri).into(note_image);
+            //Glide.with(getActivity()).load(noteEntity.note_image_uri).into(note_image);
+            if (noteEntity.note_image_uri != null) {
+                InputStream inputStream = null;
+                try {
+                    inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                note_image.setImageBitmap(bitmap);
+            }
         }
         if (Econtent.getText() != null) {
             saveWords.setText(getString(R.string.note_words,Econtent.getText().toString().trim().length()+""));
@@ -184,7 +235,7 @@ public class AddNoteFragment extends Fragment {
 
         save_time = SimpleDateFormat.getDateTimeInstance().format(new Date(System.currentTimeMillis()));
         saveTime.setText(save_time);
-        Econtent.addTextChangedListener(new TextWatcher() {
+        Econtent.addTextChangedListener(new TextWatcher() {//监听字数变化
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
 
@@ -202,14 +253,38 @@ public class AddNoteFragment extends Fragment {
             }
         });
                 //点击时间监听采用了Lambada表达式
-                floatingActionButton.setOnClickListener(v -> {
-                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);//打开系统的文件选择器
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);//为Intent添加一个类别，表示该文档是可打开的。这样可以确保用户选择的文件是可以被应用程序处理的
-                    intent.setType("image/*");//设置Intent的数据类型是所有图片类型
-                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);//先允许用户选择一张图片
-                    intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);//为Intent添加一个标志，表示该URI是持久的，即使应用程序被关闭，该URI仍然有效
-                    pickMedia.launch(intent);//启动活动结果的启动器，用于处理活动的结果，包含活动契约和回调函数
+        floatingActionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                PopupMenu popupMenu = new PopupMenu(getActivity(), view);
+                popupMenu.inflate(R.menu.pop_menu);
+                popupMenu.show();
+
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem menuItem) {
+                        int itemId = menuItem.getItemId();
+                        if (itemId == R.id.direct_photography) {
+                            takePicture();
+                            isDirect = true;
+                            return true;
+                        } else if (itemId == R.id.choose_from_album) {
+                            isDirect = false;
+                            // 使用 Intent 打开系统文件选择器
+                            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                            intent.addCategory(Intent.CATEGORY_OPENABLE);
+                            intent.setType("image/*");
+                            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+                            intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                            pickMedia.launch(intent);
+                            return true;
+                        }
+                        return AddNoteFragment.super.onOptionsItemSelected(menuItem);
+                    }
                 });
+            }
+        });
+
 
         closeButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -241,7 +316,10 @@ public class AddNoteFragment extends Fragment {
                                 title,//标题
                                 noteImageUri,//用户选择图片的uri
                                 save_time,//保存时间
-                                user.getAvatar()//头像
+                                user.getAvatar(),//头像
+                                longitude,
+                                latitude,
+                                isDirect
                         );
 
                         if (currentLatitude != null && currentLatitude != 0.0
@@ -260,10 +338,8 @@ public class AddNoteFragment extends Fragment {
                         if (noteImageUri!=null) {
                             noteEntity.setNote_image_uri(noteImageUri);
                         }
-
                         noteDao.updateNote(noteEntity);
 
-                        //Log.d("DatabaseDebug", "更新笔记经纬度: " + noteEntity.getLatitude() + ", " + noteEntity.getLongitude());
                     }
 
                     Toast.makeText(getActivity(), "保存成功！", Toast.LENGTH_LONG).show();
@@ -402,6 +478,88 @@ private void handleSelectedImage(Uri uri) {
     private boolean hasMediaLocationPermission() {
         return ContextCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.ACCESS_MEDIA_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+    private void takePicture(){
+        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA)== PackageManager.PERMISSION_GRANTED){
+            doTake();
+        }else{
+            ActivityCompat.requestPermissions(getActivity(),new String[]{Manifest.permission.CAMERA},1);
+        }
+
+    }
+
+    private void doTake() {
+        String filename = save_time; //自定义的照片名称
+        File outputImage = new File(getActivity().getExternalCacheDir(),filename);  //拍照后照片存储路径
+        try {if (outputImage.exists()){
+
+            outputImage.delete();
+        }
+            outputImage.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if (Build.VERSION.SDK_INT >= 24) {
+            //图片的url
+            imageUri = FileProvider.getUriForFile(getActivity(), "com.example.takephoto.fileprovider", outputImage);
+        } else {
+            imageUri = Uri.fromFile(outputImage);
+        }
+        //跳转界面到系统自带的拍照界面
+        Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");  //调用手机拍照功能其实就是启动一个activity
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);  //指定图片存放位置，指定后，在onActivityResult里得到的Data将为null
+        startActivityForResult(intent, 1);  //开启相机
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode==1){
+            if (resultCode==-1){
+                InputStream inputStream= null;
+                try {
+                    inputStream = getActivity().getContentResolver().openInputStream(imageUri);
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                Bitmap bitmap=BitmapFactory.decodeStream(inputStream);
+                 note_image.setImageBitmap(bitmap);
+                 noteImageUri= String.valueOf(imageUri);
+                //Glide.with(getActivity()).load(imageUri).into(note_image); 使用glide会导致再次拍照时只会显示第一次的拍照结果（可能是缓存问题）
+            }
+
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode==1){
+            if (grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED){
+                doTake();
+            }else{
+                Toast.makeText(getActivity(),"你没有获得摄像头权限~",Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+    public class MyLocationListener extends BDAbstractLocationListener{
+        @Override
+        public void onReceiveLocation(BDLocation location){
+            //此处的BDLocation为定位结果信息类，通过它的各种get方法可获取定位相关的全部结果
+            //以下只列举部分获取经纬度相关（常用）的结果信息
+            //更多结果信息获取说明，请参照类参考中BDLocation类中的说明
+
+             latitude = location.getLatitude();    //获取纬度信息
+             longitude = location.getLongitude();    //获取经度信息
+            float radius = location.getRadius();    //获取定位精度，默认值为0.0f
+
+            String coorType = location.getCoorType();
+            //获取经纬度坐标类型，以LocationClientOption中设置过的坐标类型为准
+
+            int errorCode = location.getLocType();
+            //获取定位类型、定位错误返回码，具体信息可参照类参考中BDLocation类中的说明
+        }
     }
 
     // 新增权限解释对话框

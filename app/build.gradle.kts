@@ -14,7 +14,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
+        ndk {
+            // 设置支持的SO库架构（开发者可以根据需要，选择一个或多个平台的so）
+            abiFilters.addAll(arrayOf("armeabi", "armeabi-v7a", "arm64-v8a", "x86","x86_64"))
+        }
 
     }
 
@@ -67,6 +70,9 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("androidx.exifinterface:exifinterface:1.3.3")
+
+    implementation ("com.android.support:appcompat-v7")
+
 
 }
 buildscript {

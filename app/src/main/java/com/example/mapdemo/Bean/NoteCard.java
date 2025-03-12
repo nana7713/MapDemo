@@ -11,8 +11,10 @@ public class NoteCard {
     String user_avatar;
     String cover;
     String create_time;
+    double longitude,latitude;
+    boolean isDirect;
 
-    public NoteCard(long cardID, String user_name, String user_slogan, String note_title, String note_content, String user_avatar, String cover,String create_time) {
+    public NoteCard(long cardID, String user_name, String user_slogan, String note_title, String note_content, String user_avatar, String cover,String create_time,double longitude,double latitude,boolean isDirect) {
         this.cardID = cardID;
         this.user_name = user_name;
         this.user_slogan = user_slogan;
@@ -21,10 +23,37 @@ public class NoteCard {
         this.user_avatar = user_avatar;
         this.cover = cover;
         this.create_time=create_time;
+        this.longitude = longitude;
+        this.latitude = latitude;
+        this.isDirect=isDirect;
     }
 
     public long getCardID() {
         return cardID;
+    }
+
+    public double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
+    }
+
+    public double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
+
+    public boolean isDirect() {
+        return isDirect;
+    }
+
+    public void setDirect(boolean direct) {
+        isDirect = direct;
     }
 
     public void setCardID(long cardID) {
@@ -98,6 +127,9 @@ public class NoteCard {
                 ", user_avatar='" + user_avatar + '\'' +
                 ", cover='" + cover + '\'' +
                 ", create_time='" + create_time + '\'' +
+                ", longitude=" + longitude +
+                ", latitude=" + latitude +
+                ", isDirect=" + isDirect +
                 '}';
     }
 }

@@ -1,5 +1,6 @@
 package com.example.mapdemo;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
@@ -8,6 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -71,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         fragmentTransaction.replace(R.id.fragment, MapFragment.class, null).commit();
         ll_home.setOnClickListener(this);
         ll_find.setOnClickListener(this);
-        ll_mine.setOnClickListener(this);
+        ll_mine.setOnClickListener(this); //设定点击监听器为MainActivity对象 监听函数可以直接写成公共方法
         iv_home.setSelected(true);
         tv_home.setTextColor(getResources().getColor(R.color.selected));
 
@@ -97,7 +99,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     tv_mine.setTextColor(getResources().getColor(R.color.grey));
 }*/
     @Override
-    public void onClick(View view) {
+    public void onClick(View view) {//监听函数 实现点击导航栏切换fragment
         int id = view.getId();
         if (id == R.id.ll_home&&!iv_home.isSelected()) {
             fragmentManager = getSupportFragmentManager();
@@ -130,6 +132,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             iv_find.setSelected(false);
             tv_find.setTextColor(getResources().getColor(R.color.grey));
         }
+        
+    }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
     }
 }

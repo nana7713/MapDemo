@@ -130,7 +130,7 @@ public class FragmentNote extends Fragment {
         for (NoteEntity noteEntity : localNote) {
             NoteCard noteCard = new NoteCard(noteEntity.id, noteEntity.user_name,
                     noteEntity.slogan, noteEntity.title, noteEntity.content, noteEntity.avatar_uri
-                    , noteEntity.note_image_uri, noteEntity.create_time);
+                    , noteEntity.note_image_uri, noteEntity.create_time,noteEntity.longitude,noteEntity.latitude,noteEntity.isDirect);
             cards.add(noteCard);
 
         }
@@ -165,7 +165,7 @@ public class FragmentNote extends Fragment {
     }
 
 
-    private List<NoteEntity> getLocalNote() {
+    private List<NoteEntity> getLocalNote() {//根据用户id得到数据库中对应的笔记数据
         List<NoteEntity> allNote = noteDao.findByUserID(MapApp.getUserID());
         if (allNote.size() > 0) {
             return allNote;
