@@ -1,5 +1,6 @@
 package com.example.mapdemo.Adapter;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -59,7 +60,7 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
 
     @NonNull
     @Override
-    public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull MyViewHolder holder, @SuppressLint("RecyclerView") int position) {
         holder.position.setText(Mlist.get(position).getLongitude() +" "+ Mlist.get(position).getLatitude());
         holder.userName.setText(Mlist.get(position).getUser_name());
         holder.slogan.setText(Mlist.get(position).getUser_slogan());
@@ -67,18 +68,33 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         holder.content.setText(Mlist.get(position).getNote_content());
         Glide.with(context).load(Mlist.get(position).getUser_avatar()).into(holder.avatar);
         //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
-        if(Mlist.get(position).getCover()!=null){
-            InputStream inputStream= null;
+//        InputStream inputStream= null;
+//        try {
+//            inputStream = context.getContentResolver().openInputStream(Uri.parse(Mlist.get(position).getCover()));
+//        } catch (FileNotFoundException e) {
+//            throw new RuntimeException(e);
+//        }
+//        Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
+        // 处理封面图片加载，添加异常捕获
+        String coverUri = Mlist.get(position).getCover();
+        if (coverUri != null && !coverUri.isEmpty()) {
             try {
-
-                inputStream = context.getContentResolver().openInputStream(Uri.parse(Mlist.get(position).getCover()));
+                InputStream inputStream = context.getContentResolver().openInputStream(Uri.parse(coverUri));
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                holder.cover.setImageBitmap(bitmap);
             } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
-            holder.cover.setImageBitmap(bitmap);
-        }
+//            Glide.with(context)
+//                    .load(Uri.parse(coverUri))
+//                    .into(holder.cover);
+        } else {
 
+            return;
+        }
+        //holder.cover.setImageBitmap(bitmap);
         holder.createTime.setText(Mlist.get(position).getCreate_time());
         holder.delete.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -107,7 +123,7 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         Mlist.remove(delete_position);
         countInterface.Count(Mlist.size());
 
-}
+    }
 
 
     @Override

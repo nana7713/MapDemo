@@ -203,14 +203,24 @@ public class AddNoteFragment extends Fragment {
         note_image=view.findViewById(R.id.note_image);
         floatingActionButton=view.findViewById(R.id.floating_action_button);
         pickMedia = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                    // Callback is invoked after the user selects a media item or closes the
-                    // photo picker.
+            // Callback is invoked after the user selects a media item or closes the
+            // photo picker.
 
             if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {//活动成功完成并活动返回的数据不为空，result.getData()返回一个Intent对象，包含了用户选择的媒体项的信息
                 Uri uri = result.getData().getData();//获取用户选择的媒体项的URI
-                handleSelectedImageWithWorkaround(uri);//处理带有位置信息的图片
+                try {
+                    // 获取持久化读取权限
+                    requireContext().getContentResolver().takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    );
+                    handleSelectedImageWithWorkaround(uri);
+                } catch (SecurityException e) {
+                    Log.e("Permission", "Error taking persistable uri permission", e);
+                }
+                // handleSelectedImageWithWorkaround(uri);//处理带有位置信息的图片
             }
-                });
+        });
         if (getArguments() != null) {
             Econtent.setText(getArguments().getString("content"));
             Etitle.setText(getArguments().getString("title"));
@@ -252,7 +262,7 @@ public class AddNoteFragment extends Fragment {
 
             }
         });
-                //点击时间监听采用了Lambada表达式
+        //点击时间监听采用了Lambada表达式
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -322,10 +332,9 @@ public class AddNoteFragment extends Fragment {
                                 isDirect
                         );
 
-                        if (currentLatitude != null && currentLatitude != 0.0
-                                && currentLongitude != null && currentLongitude != 0.0) {
-                            newNote.setLatitude(currentLatitude);
-                            newNote.setLongitude(currentLongitude);
+                        if ( latitude != 0.0 && longitude != 0.0) {
+                            newNote.setLatitude(latitude);
+                            newNote.setLongitude(longitude);
                             Log.d("DatabaseDebug", "新笔记经纬度: " + newNote.getLatitude() + ", " + newNote.getLongitude());
                         }
                         noteDao.insertAll(newNote);
@@ -351,55 +360,55 @@ public class AddNoteFragment extends Fragment {
         });
 
     }
-private void handleSelectedImage(Uri uri) {
-    loadImageWithLocation(uri);
-    try (InputStream inputStream = requireActivity().getContentResolver().openInputStream(uri)) {
-        if (inputStream == null) return;
+    private void handleSelectedImage(Uri uri) {
+        loadImageWithLocation(uri);
+        try (InputStream inputStream = requireActivity().getContentResolver().openInputStream(uri)) {
+            if (inputStream == null) return;
 
-        ExifInterface exif = new ExifInterface(inputStream);
-        String latStr = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE);
-        String latRef = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE_REF);
-        String lngStr = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE);
-        String lngRef = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF);
+            ExifInterface exif = new ExifInterface(inputStream);
+            String latStr = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE);
+            String latRef = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE_REF);
+            String lngStr = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE);
+            String lngRef = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF);
 
-        Log.d("EXIF_DEBUG", "原始数据: LAT=" + latStr + " " + latRef + ", LNG=" + lngStr + " " + lngRef);
+            Log.d("EXIF_DEBUG", "原始数据: LAT=" + latStr + " " + latRef + ", LNG=" + lngStr + " " + lngRef);
 
-        if (latStr == null || latRef == null || lngStr == null || lngRef == null) {
-            Log.d("EXIF_DEBUG", "缺少必要的EXIF GPS标签");
+            if (latStr == null || latRef == null || lngStr == null || lngRef == null) {
+                Log.d("EXIF_DEBUG", "缺少必要的EXIF GPS标签");
+                resetCoordinates();
+                showToast("图片未包含有效位置信息");
+                return;
+            }
+
+            // 检查是否为无效的零值
+            if (isZeroDMS(latStr) || isZeroDMS(lngStr)) {
+                Log.d("EXIF_DEBUG", "拦截到无效的零值坐标");
+                resetCoordinates();
+                showToast("图片包含无效的零坐标");
+                return;
+            }
+
+            double latitude1 = convertToDegree(latStr, latRef);
+            double longitude1 = convertToDegree(lngStr, lngRef);
+
+            if (!isValidCoordinate(latitude, longitude)) {
+                Log.d("EXIF_DEBUG", "转换后的坐标越界");
+                resetCoordinates();
+                showToast("坐标值超出合理范围");
+                return;
+            }
+
+            latitude = latitude1;
+            longitude = longitude1;
+            Log.d("EXIF_DEBUG", "转换后的坐标: " + latitude + ", " + longitude);
+            showLocationConfirmationDialog();
+
+        } catch (IOException | SecurityException e) {
+            Log.e("EXIF_DEBUG", "处理失败: " + e.getMessage());
             resetCoordinates();
-            showToast("图片未包含有效位置信息");
-            return;
+            showToast("位置信息解析失败");
         }
-
-        // 检查是否为无效的零值
-        if (isZeroDMS(latStr) || isZeroDMS(lngStr)) {
-            Log.d("EXIF_DEBUG", "拦截到无效的零值坐标");
-            resetCoordinates();
-            showToast("图片包含无效的零坐标");
-            return;
-        }
-
-        double latitude = convertToDegree(latStr, latRef);
-        double longitude = convertToDegree(lngStr, lngRef);
-
-        if (!isValidCoordinate(latitude, longitude)) {
-            Log.d("EXIF_DEBUG", "转换后的坐标越界");
-            resetCoordinates();
-            showToast("坐标值超出合理范围");
-            return;
-        }
-
-        currentLatitude = latitude;
-        currentLongitude = longitude;
-        Log.d("EXIF_DEBUG", "转换后的坐标: " + currentLatitude + ", " + currentLongitude);
-        showLocationConfirmationDialog();
-
-    } catch (IOException | SecurityException e) {
-        Log.e("EXIF_DEBUG", "处理失败: " + e.getMessage());
-        resetCoordinates();
-        showToast("位置信息解析失败");
     }
-}
 
 
     private boolean isZeroDMS(String dms) {
@@ -411,8 +420,8 @@ private void handleSelectedImage(Uri uri) {
     }
 
     private void resetCoordinates() {
-        currentLatitude = null;
-        currentLongitude = null;
+        latitude = Double.parseDouble(null);
+        longitude = Double.parseDouble(null);
     }
 
 
@@ -423,7 +432,7 @@ private void handleSelectedImage(Uri uri) {
         new AlertDialog.Builder(requireContext())
                 .setTitle("确认位置")
                 .setMessage(String.format("检测到位置：\n纬度: %.6f\n经度: %.6f",
-                        currentLatitude, currentLongitude))
+                        latitude, longitude))
                 .setPositiveButton("确认", null)
                 .show();
     }
@@ -460,7 +469,7 @@ private void handleSelectedImage(Uri uri) {
         return numerator / denominator;
     }
 
-//检查媒体位置权限位置状态
+    //检查媒体位置权限位置状态
     private void checkAndRequestLocationPermission(Uri uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (hasMediaLocationPermission()) {//如果已经有了媒体位置权限
@@ -524,8 +533,8 @@ private void handleSelectedImage(Uri uri) {
                     throw new RuntimeException(e);
                 }
                 Bitmap bitmap=BitmapFactory.decodeStream(inputStream);
-                 note_image.setImageBitmap(bitmap);
-                 noteImageUri= String.valueOf(imageUri);
+                note_image.setImageBitmap(bitmap);
+                noteImageUri= String.valueOf(imageUri);
                 //Glide.with(getActivity()).load(imageUri).into(note_image); 使用glide会导致再次拍照时只会显示第一次的拍照结果（可能是缓存问题）
             }
 
@@ -550,8 +559,8 @@ private void handleSelectedImage(Uri uri) {
             //以下只列举部分获取经纬度相关（常用）的结果信息
             //更多结果信息获取说明，请参照类参考中BDLocation类中的说明
 
-             latitude = location.getLatitude();    //获取纬度信息
-             longitude = location.getLongitude();    //获取经度信息
+            latitude = location.getLatitude();    //获取纬度信息
+            longitude = location.getLongitude();    //获取经度信息
             float radius = location.getRadius();    //获取定位精度，默认值为0.0f
 
             String coorType = location.getCoorType();
@@ -586,6 +595,7 @@ private void handleSelectedImage(Uri uri) {
             );
 
             // 加载图片
+            noteImageUri = uri.toString();//将Uri对象转换为字符串形式，并将其赋值给noteImageUri变量
             loadImageWithLocation(uri);
 
             // 处理位置信息
@@ -593,6 +603,7 @@ private void handleSelectedImage(Uri uri) {
         } catch (SecurityException e) {
             Log.e("Permission", "Security Exception: " + e.getMessage());
             showToast("无法访问该图片");
+            noteImageUri = null; // 避免存储无效URI
         }
     }
 
@@ -632,7 +643,7 @@ private void handleSelectedImage(Uri uri) {
                 String[] projection = {MediaStore.Images.ImageColumns.DATA};//定义一个字符串数组projection，用于指定要查询的列名
                 Cursor cursor = requireContext().getContentResolver().query(
                         uri, projection, null, null, null);//使用getContentResolver()方法获取ContentResolver对象，然后调用query()方法查询指定的URI，返回一个Cursor对象
-                    //uri所选图片的uri,projection：一个字符串数组，指定要查询的列。在这个例子中，projection 只包含一列，即 MediaStore.Images.ImageColumns.DATA，它代表图片的文件路径。
+                //uri所选图片的uri,projection：一个字符串数组，指定要查询的列。在这个例子中，projection 只包含一列，即 MediaStore.Images.ImageColumns.DATA，它代表图片的文件路径。
 
                 if (cursor != null && cursor.moveToFirst()) {
                     int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.ImageColumns.DATA);//获取指定列的索引
@@ -681,19 +692,19 @@ private void handleSelectedImage(Uri uri) {
 
         try {
             // 转换坐标
-            currentLatitude = convertToDegree(latStr, latRef);
-            currentLongitude = convertToDegree(lngStr, lngRef);
+            latitude = convertToDegree(latStr, latRef);
+            longitude = convertToDegree(lngStr, lngRef);
 
             // 验证坐标范围
-            if (!isValidCoordinate(currentLatitude, currentLongitude)) {
+            if (!isValidCoordinate(latitude, longitude)) {
                 Log.d("EXIF_DEBUG", "坐标越界: "
-                        + currentLatitude + ", " + currentLongitude);
+                        + latitude + ", " + longitude);
                 resetCoordinates();
                 return;
             }
 
             Log.i("EXIF_SUCCESS", "成功获取坐标: "
-                    + currentLatitude + ", " + currentLongitude);
+                    + latitude + ", " + longitude);
             showLocationConfirmationDialog();
 
         } catch (NumberFormatException e) {
