@@ -7,14 +7,19 @@ import static com.baidu.mapapi.map.BaiduMap.MAP_TYPE_SATELLITE;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.os.Bundle;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.text.TextUtils;
 import android.view.KeyEvent;
@@ -36,15 +41,22 @@ import com.baidu.location.BDLocation;
 import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.SDKInitializer;
+import com.baidu.mapapi.clusterutil.clustering.Cluster;
+import com.baidu.mapapi.clusterutil.clustering.ClusterManager;
 import com.baidu.mapapi.map.BaiduMap;
+import com.baidu.mapapi.map.BitmapDescriptor;
+import com.baidu.mapapi.map.BitmapDescriptorFactory;
 import com.baidu.mapapi.map.InfoWindow;
 import com.baidu.mapapi.map.MapPoi;
 import com.baidu.mapapi.map.MapStatus;
+import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.Marker;
+import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.model.LatLngBounds;
 import com.baidu.mapapi.search.core.PoiInfo;
 import com.baidu.mapapi.search.poi.OnGetPoiSearchResultListener;
 import com.baidu.mapapi.search.poi.PoiCitySearchOption;
@@ -53,10 +65,17 @@ import com.baidu.mapapi.search.poi.PoiDetailSearchResult;
 import com.baidu.mapapi.search.poi.PoiIndoorResult;
 import com.baidu.mapapi.search.poi.PoiResult;
 import com.baidu.mapapi.search.poi.PoiSearch;
+import com.baidu.mapapi.utils.CoordinateConverter;
+import com.example.mapdemo.Database.NoteDao;
+import com.example.mapdemo.Database.NoteEntity;
+import com.example.mapdemo.MapApp;
+import com.example.mapdemo.MyItem;
 import com.example.mapdemo.PoiAdapter;
 import com.example.mapdemo.PoiOverlay;
 import com.example.mapdemo.R;
 
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,7 +99,10 @@ public class MapFragment extends Fragment  {
     private int mCurrentPage = 0; // 当前页码
     ListView listView;
     TextView textV;
+    private List<NoteEntity> noteList;
     private List<PoiInfo> mAllPoiList = new ArrayList<>();//所有POI数据
+    private ClusterManager<MyItem> mClusterManager;
+
 
     public MapFragment() {
 
@@ -127,6 +149,9 @@ public class MapFragment extends Fragment  {
 
         //将在前端的东西与后端建立联系（findViewById）
         mMapView = view.findViewById(R.id.bmapView);
+
+
+
 
         //获取地图实例化
         mBaiduMap = mMapView.getMap();
@@ -260,7 +285,157 @@ public class MapFragment extends Fragment  {
             }
         });
 
+        // 初始化 ClusterManager
+        mClusterManager = new ClusterManager<>(getActivity(), mBaiduMap);
+
+
+        // 设置地图状态变化监听器（当地图缩放/移动时触发聚合计算）
+        mBaiduMap.setOnMapStatusChangeListener(mClusterManager);
+
+        // 设置地图标记点击监听器（点击单个标记或聚合点时触发）
+        mBaiduMap.setOnMarkerClickListener(mClusterManager);
+
+        // 获取笔记数据
+        noteList = getLocalNote();
+        if (noteList != null) {
+            addNotesToMap();
+        }
+
     }
+
+
+    private List<NoteEntity> getLocalNote() {
+        NoteDao noteDao = MapApp.getAppDb().noteDao();
+        List<NoteEntity> allNote = noteDao.findByUserID(MapApp.getUserID());
+        if (allNote.size() > 0) {
+            return allNote;
+        } else {
+            return null;
+        }
+    }
+
+    //将笔记添加到地图上
+    private void addNotesToMap() {
+
+        List<MyItem> items = new ArrayList<>();
+        for (NoteEntity note : noteList) {
+            if (note.getLatitude() != 0.0 && note.getLongitude() != 0.0) {
+
+                CoordinateConverter converter = new CoordinateConverter();
+                converter.from(CoordinateConverter.CoordType.COMMON); // 设置原始坐标类型（GPS 或 COMMON）
+
+                // 设置原始坐标
+                converter.coord(new LatLng(note.getLatitude(), note.getLongitude()));
+
+                // 转换为百度坐标（BD-09）
+                LatLng point = converter.convert();
+
+
+                // 获取笔记中的图片
+                BitmapDescriptor icon = getNoteIcon(note);
+
+                Bundle bundle = new Bundle();
+                bundle.putLong("note_id", note.getId());
+
+                //点聚合需要自定义一个类用来implements ClusterItem这个点聚合方法的类
+                MyItem item = new MyItem(point, bundle);
+                item.setBitmapDescriptor(icon);
+                items.add(item);
+                // 创建MarkerOptions并设置锚点
+                MarkerOptions markerOptions = new MarkerOptions()
+                        .position(point)
+                        .icon(icon)
+                        .anchor(0.5f, 1.0f); // 设置锚点为图片底部中心
+
+                // 添加标记到地图
+                mBaiduMap.addOverlay(markerOptions);
+            }
+        }
+
+        mClusterManager.addItems(items);
+
+        //标记点击事件，进入编辑页面
+        mClusterManager.setOnClusterItemClickListener(new ClusterManager.OnClusterItemClickListener<MyItem>() {
+            @Override
+            public boolean onClusterItemClick(MyItem item) {
+                Bundle bundle = item.getExtraInfo();
+                if (bundle != null) {
+                    long noteId = bundle.getLong("note_id");
+                    openNoteEditFragment(noteId);
+                    return true;
+                }
+                return false;
+            }
+        });
+        //聚合点点击事件，进入聚合点内多点的显示
+        mClusterManager.setOnClusterClickListener(new ClusterManager.OnClusterClickListener<MyItem>() {
+            @Override
+            public boolean onClusterClick(Cluster<MyItem> cluster) {
+                LatLngBounds.Builder builder2 = new LatLngBounds.Builder();
+
+                for (MyItem myItem : items) {
+                    builder2.include(myItem.getPosition());
+                }
+
+                LatLngBounds latlngBounds = builder2.build();
+                MapStatusUpdate u = MapStatusUpdateFactory.newLatLngBounds(
+                        latlngBounds,
+                        mMapView.getWidth(),
+                        mMapView.getHeight()
+                );
+                mBaiduMap.animateMapStatus(u);
+                return false;
+            }
+        });
+
+
+
+    }
+    //获取图片，并将其缩放到指定大小
+    private BitmapDescriptor getNoteIcon(NoteEntity note) {
+        if (note.getNote_image_uri() != null) {
+            try {
+                InputStream inputStream = requireActivity().getContentResolver().openInputStream(Uri.parse(note.getNote_image_uri()));
+                Bitmap originalBitmap = BitmapFactory.decodeStream(inputStream);
+                // 调整图片大小
+                Bitmap resizedBitmap = resizeBitmap(originalBitmap, 100, 100); // 调整为 100x100 像素
+                return BitmapDescriptorFactory.fromBitmap(resizedBitmap);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        return BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding); // 默认图标
+    }
+
+    private Bitmap resizeBitmap(Bitmap originalBitmap, int newWidth, int newHeight) {
+        return Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, false);
+    }
+
+    //进入编辑页面
+    private void openNoteEditFragment(long noteId) {
+        FragmentManager fragmentManager = getFragmentManager();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+
+        AddNoteFragment addNoteFragment = AddNoteFragment.newInstance("", "");
+        Bundle args = new Bundle();
+        args.putLong("id", noteId);
+        args.putBoolean("is_new", false);
+        NoteEntity note = getNoteById(noteId);
+        if (note != null) {
+            args.putString("title", note.getTitle());
+            args.putString("content", note.getContent());
+        }
+        addNoteFragment.setArguments(args);
+
+        fragmentTransaction.replace(R.id.fragment, addNoteFragment).addToBackStack(null).commit();
+    }
+
+    private NoteEntity getNoteById(long noteId) {
+        NoteDao noteDao = MapApp.getAppDb().noteDao();
+        return noteDao.findById(noteId);
+    }
+
+
     OnGetPoiSearchResultListener poiSearchResultListener = new OnGetPoiSearchResultListener() {
         @Override
         public void onGetPoiResult(PoiResult poiResult) {
