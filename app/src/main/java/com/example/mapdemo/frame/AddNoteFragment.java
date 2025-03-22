@@ -420,8 +420,8 @@ public class AddNoteFragment extends Fragment {
     }
 
     private void resetCoordinates() {
-        latitude = Double.parseDouble(null);
-        longitude = Double.parseDouble(null);
+        latitude = Double.parseDouble(String.valueOf(0));
+        longitude = Double.parseDouble(String.valueOf(0));
     }
 
 
@@ -650,7 +650,7 @@ public class AddNoteFragment extends Fragment {
                     String filePath = cursor.getString(columnIndex);//使用getColumnIndexOrThrow()方法获取指定列的索引，然后使用getString()方法获取该列的值
                     cursor.close();
 
-                    if (new File(filePath).exists()) {
+                    if (filePath!=null&&!filePath.isEmpty()) {
                         ExifInterface exif = new ExifInterface(filePath);//使用ExifInterface类的构造函数创建一个ExifInterface对象，该对象用于读取和写入EXIF数据
                         processRealExif(exif);//使用processRealExif()方法处理ExifInterface对象，该方法用于提取和处理EXIF数据
                         return;
