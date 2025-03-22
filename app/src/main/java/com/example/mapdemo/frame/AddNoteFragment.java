@@ -332,11 +332,12 @@ public class AddNoteFragment extends Fragment {
                                 isDirect
                         );
 
-                        if ( latitude != 0.0 && longitude != 0.0) {
-                            newNote.setLatitude(latitude);
-                            newNote.setLongitude(longitude);
+
+                        Log.d("Debug", "插入数据库前的 longitude: " + newNote.longitude);
+                        if ( latitude != 0.0 && longitude != 0.0&& !Double.isNaN(latitude)&&!Double.isNaN(longitude)) {
                             Log.d("DatabaseDebug", "新笔记经纬度: " + newNote.getLatitude() + ", " + newNote.getLongitude());
                         }
+
                         noteDao.insertAll(newNote);
 
                         //noteDao.insertAll(new NoteEntity(user.getName(), MapApp.getUserID(),user.slogan, content, title, noteImageUri, save_time, user.getAvatar()));
@@ -420,8 +421,8 @@ public class AddNoteFragment extends Fragment {
     }
 
     private void resetCoordinates() {
-        latitude = Double.parseDouble(String.valueOf(0));
-        longitude = Double.parseDouble(String.valueOf(0));
+        latitude = 0; //默认值设置为多少还有待商榷 设为NaN会导致数据库出现NOT NULL constraint failed 原因不明
+        longitude = 0;
     }
 
 
@@ -650,7 +651,7 @@ public class AddNoteFragment extends Fragment {
                     String filePath = cursor.getString(columnIndex);//使用getColumnIndexOrThrow()方法获取指定列的索引，然后使用getString()方法获取该列的值
                     cursor.close();
 
-                    if (filePath!=null&&!filePath.isEmpty()) {
+                    if (filePath != null && !filePath.isEmpty()) {
                         ExifInterface exif = new ExifInterface(filePath);//使用ExifInterface类的构造函数创建一个ExifInterface对象，该对象用于读取和写入EXIF数据
                         processRealExif(exif);//使用processRealExif()方法处理ExifInterface对象，该方法用于提取和处理EXIF数据
                         return;
