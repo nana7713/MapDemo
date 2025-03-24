@@ -1,5 +1,7 @@
 package com.example.mapdemo.frame;
 
+import static com.example.mapdemo.CoordinateUtils.convertBD09ToGCJ02;
+
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -60,7 +62,9 @@ import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.utils.CoordinateConverter;
 import com.bumptech.glide.Glide;
+import com.example.mapdemo.CoordinateTransform;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.Database.User;
@@ -112,6 +116,8 @@ public class AddNoteFragment extends Fragment {
     private boolean is_new = true;
     private long id;
     ActivityResultLauncher<Intent> pickMedia;
+    private double exifLatitude=0.0;
+    private double exifLongitude=0.0;
 
 
     // 新增权限请求码
@@ -317,6 +323,18 @@ public class AddNoteFragment extends Fragment {
                     saveTime.setText(save_time);
                     User user = userDao.findById(MapApp.getUserID());//获取当前用户
 
+                    double finalLat;
+                    double finalLng;
+                    if(exifLatitude==0&&exifLongitude==0)
+                    {
+                        finalLat=latitude;
+                        finalLng=longitude;
+                    }
+                    else
+                    {
+                        finalLat=exifLatitude;
+                        finalLng=exifLongitude;
+                    }
                     if (is_new) {
                         NoteEntity newNote = new NoteEntity(
                                 user.getName(),
@@ -327,8 +345,8 @@ public class AddNoteFragment extends Fragment {
                                 noteImageUri,//用户选择图片的uri
                                 save_time,//保存时间
                                 user.getAvatar(),//头像
-                                longitude,
-                                latitude,
+                                finalLng,
+                                finalLat,
                                 isDirect
                         );
 
@@ -389,19 +407,30 @@ public class AddNoteFragment extends Fragment {
                 return;
             }
 
-            double latitude1 = convertToDegree(latStr, latRef);
-            double longitude1 = convertToDegree(lngStr, lngRef);
+            double wgsLat = convertToDegree(latStr, latRef);
+            double wgsLng = convertToDegree(lngStr, lngRef);
+            Log.d("EXIF_DEBUG", "转换后的坐标: " + wgsLat  + ", " + wgsLng );
+            if (isValidCoordinate(wgsLat , wgsLng)) {
 
-            if (!isValidCoordinate(latitude, longitude)) {
-                Log.d("EXIF_DEBUG", "转换后的坐标越界");
+//                Log.d("EXIF_DEBUG", "转换后的坐标越界");
+//                resetCoordinates();
+//                showToast("坐标值超出合理范围");
+//                return;
+                CoordinateTransform.LatLng gcj02Point = CoordinateTransform.wgs84ToGcj02(wgsLat, wgsLng);
+//                LatLng bdPoint=convertToBaiduCoord(gcj02Point.latitude,gcj02Point.longitude );
+//                exifLatitude=bdPoint.latitude;
+//                exifLongitude=bdPoint.longitude;
+                exifLatitude = gcj02Point .latitude;
+                exifLongitude = gcj02Point.longitude;
+            }
+            // 新增百度坐标系验证
+            if (!isValidBaiduCoordinate(exifLatitude, exifLongitude)) {
+                Log.e("COORD", "转换后坐标超出百度有效范围");
                 resetCoordinates();
-                showToast("坐标值超出合理范围");
                 return;
             }
 
-            latitude = latitude1;
-            longitude = longitude1;
-            Log.d("EXIF_DEBUG", "转换后的坐标: " + latitude + ", " + longitude);
+
             showLocationConfirmationDialog();
 
         } catch (IOException | SecurityException e) {
@@ -411,7 +440,11 @@ public class AddNoteFragment extends Fragment {
         }
     }
 
-
+    // 新增百度坐标系验证（中国大致范围）
+    private boolean isValidBaiduCoordinate(double lat, double lng) {
+        return (lat >= 18.11 && lat <= 53.33) &&
+                (lng >= 73.66 && lng <= 135.05);
+    }
     private boolean isZeroDMS(String dms) {
         return dms != null && dms.equals("0/1,0/1,0/1");
     }
@@ -421,8 +454,8 @@ public class AddNoteFragment extends Fragment {
     }
 
     private void resetCoordinates() {
-        latitude = 0; //默认值设置为多少还有待商榷 设为NaN会导致数据库出现NOT NULL constraint failed 原因不明
-        longitude = 0;
+        exifLongitude  = 0; //默认值设置为多少还有待商榷 设为NaN会导致数据库出现NOT NULL constraint failed 原因不明
+        exifLatitude  = 0;
     }
 
 
@@ -433,7 +466,7 @@ public class AddNoteFragment extends Fragment {
         new AlertDialog.Builder(requireContext())
                 .setTitle("确认位置")
                 .setMessage(String.format("检测到位置：\n纬度: %.6f\n经度: %.6f",
-                        latitude, longitude))
+                        exifLatitude, exifLongitude))
                 .setPositiveButton("确认", null)
                 .show();
     }
@@ -441,10 +474,12 @@ public class AddNoteFragment extends Fragment {
 
     private double convertToDegree(String stringDMS, String ref) {
         try {
-            String[] dmsParts = stringDMS.split(",", 3);
+            String normalized=stringDMS.replaceAll(" ",",");
+            String[] dmsParts = normalized.split(",", 3);
             if (dmsParts.length != 3) {
-                Log.e("CONVERT_DEGREE", "无效的度分秒格式: " + stringDMS);
-                return 0.0;
+               // Log.e("CONVERT_DEGREE", "无效的度分秒格式: " + stringDMS);
+                throw new IllegalArgumentException("Invaild DMS format:"+stringDMS );
+                //return 0.0;
             }
             // 调用 parseRational 方法将度、分、秒部分的字符串转换为对应的小数值
             double degrees = parseRational(dmsParts[0]);
@@ -525,7 +560,9 @@ public class AddNoteFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode==1){
+        if (requestCode==1&&resultCode==Activity.RESULT_OK ){
+            exifLatitude=0.0;
+            exifLongitude=0.0;
             if (resultCode==-1){
                 InputStream inputStream= null;
                 try {
@@ -693,19 +730,32 @@ public class AddNoteFragment extends Fragment {
 
         try {
             // 转换坐标
-            latitude = convertToDegree(latStr, latRef);
-            longitude = convertToDegree(lngStr, lngRef);
+            double wgsLat = convertToDegree(latStr, latRef);
+            double wgsLng = convertToDegree(lngStr, lngRef);
 
             // 验证坐标范围
-            if (!isValidCoordinate(latitude, longitude)) {
+            if (isValidCoordinate(wgsLat,wgsLng)) {
+                CoordinateTransform.LatLng gcj02Point = CoordinateTransform.wgs84ToGcj02(wgsLat, wgsLng);
+//                LatLng bdPoint = convertToBaiduCoord(gcj02Point.latitude,gcj02Point.longitude );
+//                exifLatitude = bdPoint.latitude;
+//                exifLongitude = bdPoint.longitude;
+                exifLatitude = gcj02Point .latitude;
+               exifLongitude = gcj02Point.longitude;
+            }
+            else{
                 Log.d("EXIF_DEBUG", "坐标越界: "
-                        + latitude + ", " + longitude);
+                        + exifLatitude + ", " + exifLongitude);
                 resetCoordinates();
                 return;
             }
-
+            // 验证坐标范围
+            if (!isValidBaiduCoordinate(exifLatitude, exifLongitude)) {
+                Log.e("COORD", "转换后坐标超出有效范围");
+                resetCoordinates();
+                return;
+            }
             Log.i("EXIF_SUCCESS", "成功获取坐标: "
-                    + latitude + ", " + longitude);
+                    + exifLatitude + ", " + exifLongitude);
             showLocationConfirmationDialog();
 
         } catch (NumberFormatException e) {
@@ -714,5 +764,25 @@ public class AddNoteFragment extends Fragment {
             showToast("位置格式错误");
         }
     }
+//    // 增强坐标转换方法
+//    private LatLng convertToBaiduCoord(double gcLat, double gcLng) {
+//        try {
+//
+//            CoordinateConverter converter = new CoordinateConverter()
+//                    .from(CoordinateConverter.CoordType.GPS)
+//                    .coord(new LatLng(gcLat, gcLng));
+//
+//            LatLng result = converter.convert();
+//
+//            return result;
+////            // 添加手动校准（根据实测数据调整）
+////            double calibratedLat = result.latitude-0.005611361846;  // 纬度校准值
+////          double calibratedLng = result.longitude - 0.00668795556; // 经度校准值
+////            return new LatLng(calibratedLat, calibratedLng);
+//        } catch (Exception e) {
+//            Log.e("COORD_CONVERT", "坐标转换异常: " + e.getMessage());
+//            return new LatLng(0, 0);
+//        }
+//    }
 
 }
