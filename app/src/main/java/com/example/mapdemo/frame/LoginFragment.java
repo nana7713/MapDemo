@@ -124,7 +124,8 @@ public class LoginFragment extends Fragment {
                 for (int i = 0; i < users.size(); i++) {
                     if (TextUtils.equals(users.get(i).account, account)) {
                         if (TextUtils.equals(users.get(i).password, password)) {
-                            MapApp.setUserID(users.get(i).getUid());
+                            int uid = users.get(i).getUid();
+                            MapApp.setUserID(uid); // 保存用户 ID
                             Toast.makeText(getActivity(), "登录成功！", Toast.LENGTH_LONG).show();
                             fragmentManager = getFragmentManager();
                             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();

@@ -2,7 +2,8 @@ package com.example.mapdemo.Database;
 
 import androidx.room.*;
 
-@Entity(tableName = "note",indices = {@Index(value = {"user_name"})},foreignKeys = @ForeignKey(
+@Entity(tableName = "note",indices = {@Index(value = {"user_name"}),            // 为userId列添加索引
+        @Index(value = {"userId"}) },foreignKeys = @ForeignKey(
         entity = User.class, parentColumns = "uid", childColumns = "userId",onDelete =ForeignKey.CASCADE
         ))
 public class NoteEntity {

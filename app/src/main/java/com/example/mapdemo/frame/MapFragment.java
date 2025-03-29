@@ -22,6 +22,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -88,6 +89,8 @@ public class MapFragment extends Fragment  {
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
+    // 定义 TAG 变量
+    private static final String TAG = "MapFragment";
     TextView locationInfo;//用于显示定位信息
     LocationClient mlocationClient;//声明一个LocationClient类型的变量，用于管理百度地图的定位功能
     MapView mMapView;//用于显示百度地图
@@ -306,10 +309,17 @@ public class MapFragment extends Fragment  {
 
     private List<NoteEntity> getLocalNote() {
         NoteDao noteDao = MapApp.getAppDb().noteDao();
-        List<NoteEntity> allNote = noteDao.findByUserID(MapApp.getUserID());
+        int userId = MapApp.getUserID();
+        if (userId <= 0) {
+            // 用户 ID 无效，给出提示信息
+            Toast.makeText(getActivity(), "用户 ID 无效，请重新登录", Toast.LENGTH_LONG).show();
+            return null;
+        }
+        List<NoteEntity> allNote = noteDao.findByUserID(userId);
         if (allNote.size() > 0) {
             return allNote;
         } else {
+            Log.d(TAG, "getLocalNote: 没有笔记数据");
             return null;
         }
     }

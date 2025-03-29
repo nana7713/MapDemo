@@ -153,14 +153,14 @@ public class FragmentNote extends Fragment {
                 bundle.putLong("id",id);
                 AddNoteFragment addNoteFragment=new AddNoteFragment();
                 addNoteFragment.setArguments(bundle);
-                fragmentManager = getFragmentManager();
-                FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
+    fragmentManager = getFragmentManager();
+    FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
                 fragmentTransaction.replace(R.id.fragment, addNoteFragment,null).addToBackStack(null).commit();
 
-            }
+}
         });
-        recyclerView.setAdapter(myAdapter);
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getActivity());
+                recyclerView.setAdapter(myAdapter);
+RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getActivity());
         recyclerView.setLayoutManager(layoutManager);
     }
 

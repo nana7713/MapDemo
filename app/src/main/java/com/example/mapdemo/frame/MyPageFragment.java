@@ -16,6 +16,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.example.mapdemo.Database.User;
@@ -96,12 +97,18 @@ public class MyPageFragment extends Fragment {
         age=view.findViewById(R.id.age);
         place=view.findViewById(R.id.place);
         gender=view.findViewById(R.id.gender);
-        User user= userDao.findById(MapApp.getUserID());
-        userName.setText(user.getName());
-        age.setText(user.getAge());
-        place.setText(user.getPlace());
-        gender.setText(user.getGender());
-        Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
+
+        User user = userDao.findById(MapApp.getUserID());
+        if (user != null) {
+            userName.setText(user.getName());
+            age.setText(user.getAge());
+            place.setText(user.getPlace());
+            gender.setText(user.getGender());
+            Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
+        } else {
+            // 数据库中不存在该用户，给出提示信息
+            Toast.makeText(getActivity(), "未找到该用户信息，请重新登录", Toast.LENGTH_LONG).show();
+        }
 
 
         mStringList = new ArrayList<>();
