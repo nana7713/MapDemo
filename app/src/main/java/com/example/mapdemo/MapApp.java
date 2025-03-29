@@ -15,7 +15,7 @@ import java.util.List;
 
 public class MapApp extends Application {
     private static AppDatabase db;
-    private static int UserID;
+    private static int UserID=0;
 
     @Override
     public void onCreate() {

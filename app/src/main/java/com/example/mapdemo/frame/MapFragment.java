@@ -221,7 +221,8 @@ public class MapFragment extends Fragment  {
 
             }
         });
-
+        //设置地图单击事件监听
+        mBaiduMap.setOnMapClickListener(listener);
         //poi检索实例
         mPoiSearch = PoiSearch.newInstance();
         //poi监听器
@@ -305,6 +306,38 @@ public class MapFragment extends Fragment  {
         }
 
     }
+    BaiduMap.OnMapClickListener listener = new BaiduMap.OnMapClickListener() {
+        /**
+         * 地图单击事件回调函数
+         *
+         * @param point 点击的地理坐标
+         */
+        @Override
+        public void onMapClick(LatLng point) {
+
+        }
+
+        /**
+         * 地图内 Poi 单击事件回调函数
+         *
+         * @param mapPoi 点击的 poi 信息
+         */
+        @Override
+        public void onMapPoiClick(MapPoi mapPoi) {
+            Bundle bundle=new Bundle();
+
+            bundle.putString("poiName",mapPoi.getName());
+            bundle.putString("poiId",mapPoi.getUid());
+            PoiFragment poiFragment=new PoiFragment();
+            poiFragment.setArguments(bundle);
+            FragmentManager fragmentManager = getFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            fragmentTransaction.replace(R.id.fragment, poiFragment, null).addToBackStack(null).commit();
+            
+
+        }
+    };
+
 
 
     private List<NoteEntity> getLocalNote() {
@@ -329,6 +362,7 @@ public class MapFragment extends Fragment  {
 
         List<MyItem> items = new ArrayList<>();
         for (NoteEntity note : noteList) {
+            if (note.getPoiId()!=null) continue;
             if (note.getLatitude() != 0.0 && note.getLongitude() != 0.0) {
 
                 CoordinateConverter converter = new CoordinateConverter();

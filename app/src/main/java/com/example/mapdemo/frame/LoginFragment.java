@@ -40,6 +40,7 @@ public class LoginFragment extends Fragment {
     private FragmentManager fragmentManager;
     private List<User> users = userDao.getAll();
     private String mParam1;
+    boolean isFromMap=false;
     private String mParam2;
     private CheckBox rememberPassword, autoLogin;
     EditText Eaccount, Epassword;
@@ -83,6 +84,9 @@ public class LoginFragment extends Fragment {
         login = view.findViewById(R.id.login);
         rememberPassword = view.findViewById(R.id.remember_password);
         autoLogin = view.findViewById(R.id.auto_login);
+
+        if (getArguments()!=null)
+          isFromMap=getArguments().getBoolean("isFromMap");
         SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
         if (sharedPreferences != null) {
             Eaccount.setText(sharedPreferences.getString("account", ""));
@@ -129,7 +133,12 @@ public class LoginFragment extends Fragment {
                             Toast.makeText(getActivity(), "登录成功！", Toast.LENGTH_LONG).show();
                             fragmentManager = getFragmentManager();
                             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                            fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
+                            if (isFromMap){
+                               fragmentTransaction.replace(R.id.fragment, MapFragment.class, null).commit();//这样会导致fragment栈内有两个MapFragment
+                            }
+                            else{
+                                fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
+                            }
                             SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
                             SharedPreferences.Editor editor = sharedPreferences.edit();
                             editor.putInt("uid",users.get(i).getUid());

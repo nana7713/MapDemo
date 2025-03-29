@@ -115,6 +115,7 @@ public class AddNoteFragment extends Fragment {
     private FragmentManager fragmentManager;
     private boolean is_new = true;
     private long id;
+    private String poiId;
     ActivityResultLauncher<Intent> pickMedia;
     private double exifLatitude=0.0;
     private double exifLongitude=0.0;
@@ -227,7 +228,11 @@ public class AddNoteFragment extends Fragment {
                 // handleSelectedImageWithWorkaround(uri);//处理带有位置信息的图片
             }
         });
-        if (getArguments() != null) {
+        if (getArguments() != null&&getArguments().getString("poiId")!=null){
+            Toast.makeText(getActivity(),"test",Toast.LENGTH_LONG).show();
+            poiId=getArguments().getString("poiId");
+        }
+        if (getArguments() != null&&getArguments().getString("content")!=null) {
             Econtent.setText(getArguments().getString("content"));
             Etitle.setText(getArguments().getString("title"));
             is_new = getArguments().getBoolean("is_new");//判断是否是新添加的笔记
@@ -336,7 +341,9 @@ public class AddNoteFragment extends Fragment {
                         finalLng=exifLongitude;
                     }
                     if (is_new) {
-                        NoteEntity newNote = new NoteEntity(
+                        NoteEntity newNote;
+                        if (poiId==null){
+                         newNote = new NoteEntity(
                                 user.getName(),
                                 MapApp.getUserID(),
                                 user.slogan,// 新增的字段
@@ -347,8 +354,23 @@ public class AddNoteFragment extends Fragment {
                                 user.getAvatar(),//头像
                                 finalLng,
                                 finalLat,
-                                isDirect
-                        );
+                                isDirect,
+                                "0"
+                        );}else {
+                             newNote = new NoteEntity(
+                                    user.getName(),
+                                    MapApp.getUserID(),
+                                    user.slogan,// 新增的字段
+                                    content,//输入的笔记内容
+                                    title,//标题
+                                    noteImageUri,//用户选择图片的uri
+                                    save_time,//保存时间
+                                    user.getAvatar(),//头像
+                                    longitude,
+                                    latitude,
+                                    isDirect,
+                                    poiId);
+                        }
 
 
                         Log.d("Debug", "插入数据库前的 longitude: " + newNote.longitude);
