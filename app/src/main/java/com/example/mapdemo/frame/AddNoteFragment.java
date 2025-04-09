@@ -64,6 +64,7 @@ import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.utils.CoordinateConverter;
 import com.bumptech.glide.Glide;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.CoordinateTransform;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
@@ -71,6 +72,7 @@ import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
@@ -84,6 +86,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -379,9 +385,31 @@ public class AddNoteFragment extends Fragment {
                         }
 
                         noteDao.insertAll(newNote);
+                        // 创建 Retrofit 服务实例
+                        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
+                        // 调用上传笔记的方法
+                        Call<Void> call = apiService.insert(newNote);
+                        call.enqueue(new Callback<Void>() {
+                            @Override
+                            public void onResponse(Call<Void> call, Response<Void> response) {
+                                if (response.isSuccessful()) {
+                                    Toast.makeText(requireActivity(), "笔记上传成功", Toast.LENGTH_SHORT).show();
+                                    // 可以在这里将笔记保存到本地 SQLite 数据库
+                                } else {
+                                    Toast.makeText(requireActivity(), "笔记上传失败：" + response.code(), Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<Void> call, Throwable t) {
+                                Toast.makeText(requireActivity(), "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
                         //noteDao.insertAll(new NoteEntity(user.getName(), MapApp.getUserID(),user.slogan, content, title, noteImageUri, save_time, user.getAvatar()));
-                    } else {
+
+                    }
+                    else {
                         NoteEntity noteEntity = noteDao.findById(id);
                         noteEntity.setContent(content);
                         noteEntity.setTitle(title);
@@ -389,7 +417,26 @@ public class AddNoteFragment extends Fragment {
                             noteEntity.setNote_image_uri(noteImageUri);
                         }
                         noteDao.updateNote(noteEntity);
+                        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
+                        // 调用上传笔记的方法
+                        Call<Void> call = apiService.update(noteEntity);
+                        call.enqueue(new Callback<Void>() {
+                            @Override
+                            public void onResponse(Call<Void> call, Response<Void> response) {
+                                if (response.isSuccessful()) {
+                                    Toast.makeText(requireActivity(), "笔记上传成功", Toast.LENGTH_SHORT).show();
+                                    // 可以在这里将笔记保存到本地 SQLite 数据库
+                                } else {
+                                    Toast.makeText(requireActivity(), "笔记上传失败：" + response.code(), Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<Void> call, Throwable t) {
+                                Toast.makeText(requireActivity(), "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
 
                     Toast.makeText(getActivity(), "保存成功！", Toast.LENGTH_LONG).show();
@@ -397,6 +444,7 @@ public class AddNoteFragment extends Fragment {
                     fragmentManager.popBackStack();
 
                 }
+
             }
         });
 

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+
 }
 
 android {
@@ -40,6 +41,8 @@ android {
             abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
         }
+
+
     }
     sourceSets {
         getByName("main") {
@@ -61,7 +64,7 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     val room_version = "2.6.1"
-
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("androidx.room:room-runtime:$room_version")
 
     // If this project only uses Java source, use the Java annotationProcessor
@@ -70,7 +73,8 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("androidx.exifinterface:exifinterface:1.3.3")
-
+    implementation("com.squareup.retrofit2:retrofit:2.0.2")
+    implementation("com.squareup.retrofit2:converter-gson:2.0.2")
     implementation ("com.android.support:appcompat-v7")
 
 
