@@ -56,6 +56,7 @@ import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.Marker;
 import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationData;
+import com.baidu.mapapi.map.PoiTagType;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.model.LatLngBounds;
 import com.baidu.mapapi.search.core.PoiInfo;
@@ -79,6 +80,7 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 
 public class MapFragment extends Fragment  {
@@ -102,6 +104,10 @@ public class MapFragment extends Fragment  {
     private int mCurrentPage = 0; // 当前页码
     ListView listView;
     TextView textV;
+    String type="public";
+
+
+
     private List<NoteEntity> noteList;
     private List<PoiInfo> mAllPoiList = new ArrayList<>();//所有POI数据
     private ClusterManager<MyItem> mClusterManager;
@@ -152,6 +158,8 @@ public class MapFragment extends Fragment  {
 
         //将在前端的东西与后端建立联系（findViewById）
         mMapView = view.findViewById(R.id.bmapView);
+        if (getArguments()!=null)
+        type=getArguments().getString("type");
 
 
 
@@ -182,7 +190,7 @@ public class MapFragment extends Fragment  {
         matype.setOnClickListener(new View.OnClickListener() {//设置地图类型切换按钮的点击事件
             @Override
             public void onClick(View v) {
-                BaiduMap map = mMapView.getMap();//获取当前地图实例
+                /*BaiduMap map = mMapView.getMap();//获取当前地图实例
                 int type = map.getMapType();//获取当前地图类型
                 switch (type) {
                     case MAP_TYPE_NORMAL:
@@ -191,7 +199,38 @@ public class MapFragment extends Fragment  {
                     case MAP_TYPE_SATELLITE:
                         map.setMapType(MAP_TYPE_NORMAL);//从卫星地图切换到普通地图
                         break;
+                }*/
+
+                switch (type){
+
+                    case "public":
+
+                        FragmentManager fragmentManager=getFragmentManager();
+                        FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
+                        MapFragment mapFragment1=new MapFragment();
+                        Bundle bundle1=new Bundle();
+                        bundle1.putString("type","private");
+                        mapFragment1.setArguments(bundle1);
+                        fragmentTransaction.replace(R.id.fragment,mapFragment1,null).commit();
+
+
+                        break;
+
+                    case "private":
+
+                        fragmentManager=getFragmentManager();
+                        fragmentTransaction = fragmentManager.beginTransaction();
+                        MapFragment mapFragment2=new MapFragment();
+                        Bundle bundle2=new Bundle();
+                        bundle2.putString("type","public");
+                        mapFragment2.setArguments(bundle2);
+
+                        fragmentTransaction.replace(R.id.fragment,mapFragment2,null).commit();
+                        type="public";
+
+                        break;
                 }
+
             }
         });
 
@@ -299,10 +338,13 @@ public class MapFragment extends Fragment  {
         // 设置地图标记点击监听器（点击单个标记或聚合点时触发）
         mBaiduMap.setOnMarkerClickListener(mClusterManager);
 
-        // 获取笔记数据
-        noteList = getLocalNote();
-        if (noteList != null) {
-            addNotesToMap();
+       //如果是个人地图，显示缩略图
+        if (Objects.equals(type, "private")) {
+            mBaiduMap.setPoiTagEnable(PoiTagType.All, false);
+            noteList = getLocalNote();
+            if (noteList != null) {
+                addNotesToMap();
+            }
         }
 
     }
@@ -362,7 +404,7 @@ public class MapFragment extends Fragment  {
 
         List<MyItem> items = new ArrayList<>();
         for (NoteEntity note : noteList) {
-            if (note.getPoiId()!=null) continue;
+            if (!Objects.equals(note.getPoiId(), "0")) continue;
             if (note.getLatitude() != 0.0 && note.getLongitude() != 0.0) {
 
                 CoordinateConverter converter = new CoordinateConverter();
