@@ -394,16 +394,23 @@ public class AddNoteFragment extends Fragment {
                             @Override
                             public void onResponse(Call<Void> call, Response<Void> response) {
                                 if (response.isSuccessful()) {
-                                    Toast.makeText(requireActivity(), "笔记上传成功", Toast.LENGTH_SHORT).show();
-                                    // 可以在这里将笔记保存到本地 SQLite 数据库
+                                    Log.d("API", "HTTP 成功，状态码: " + response.code());
+                                    Log.d("API", "响应头: " + response.headers());
+                                    // 检查是否是真正的成功（如 204 No Content）
+                                    if (response.code() == 204) {
+                                        Log.w("API", "服务器返回 204，可能未实际保存数据");
+                                    }
+                                    Log.d("RegisterFragment", "笔记上传成功");
                                 } else {
-                                    Toast.makeText(requireActivity(), "笔记上传失败：" + response.code(), Toast.LENGTH_SHORT).show();
+                                    Log.e("RegisterFragment", "笔记上传失败：" + response.code());
                                 }
                             }
 
                             @Override
                             public void onFailure(Call<Void> call, Throwable t) {
-                                Toast.makeText(requireActivity(), "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+
+                                Log.e("RegisterFragment", "网络错误：" + t.getMessage());
+
                             }
                         });
                         //noteDao.insertAll(new NoteEntity(user.getName(), MapApp.getUserID(),user.slogan, content, title, noteImageUri, save_time, user.getAvatar()));
@@ -420,21 +427,20 @@ public class AddNoteFragment extends Fragment {
                         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
                         // 调用上传笔记的方法
-                        Call<Void> call = apiService.update(noteEntity);
+                        Call<Void> call = apiService.insert(noteEntity);
                         call.enqueue(new Callback<Void>() {
                             @Override
                             public void onResponse(Call<Void> call, Response<Void> response) {
                                 if (response.isSuccessful()) {
-                                    Toast.makeText(requireActivity(), "笔记上传成功", Toast.LENGTH_SHORT).show();
-                                    // 可以在这里将笔记保存到本地 SQLite 数据库
+                                    //原来这里使用Toast作为提示，但是由于网络请求异步执行，可能稍慢于页面的切换，而Toast的显示是依附于页面的，因此在这里使用Toast可能会因为请求完成时页面已经销毁切换导致闪退
                                 } else {
-                                    Toast.makeText(requireActivity(), "笔记上传失败：" + response.code(), Toast.LENGTH_SHORT).show();
+
                                 }
                             }
 
                             @Override
                             public void onFailure(Call<Void> call, Throwable t) {
-                                Toast.makeText(requireActivity(), "网络错误：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+
                             }
                         });
                     }

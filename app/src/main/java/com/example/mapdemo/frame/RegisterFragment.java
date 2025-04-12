@@ -9,16 +9,24 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -105,6 +113,33 @@ public class RegisterFragment extends Fragment implements View.OnClickListener {
         }
         User user=new User(account,password);
         userDao.insertAll(user);
+        // 创建 Retrofit 服务实例
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        // 调用上传笔记的方法
+        Call<Void> call = apiService.insertUser(user);
+        call.enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d("API", "HTTP 成功，状态码: " + response.code());
+                    Log.d("API", "响应头: " + response.headers());
+                    // 检查是否是真正的成功（如 204 No Content）
+                    if (response.code() == 204) {
+                        Log.w("API", "服务器返回 204，可能未实际保存数据");
+                    }
+                    Log.d("RegisterFragment", "用户注册成功");
+                } else {
+                    Log.e("RegisterFragment", "用户注册失败：" + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+
+                Log.e("RegisterFragment", "网络错误：" + t.getMessage());
+
+            }
+        });
         Toast.makeText(getActivity(),"注册成功",Toast.LENGTH_LONG).show();
         FragmentManager fragmentManager = getFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
