@@ -25,11 +25,17 @@ import android.widget.RadioButton;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -55,6 +61,7 @@ public class SetFragment extends Fragment {
     UserDao userDao=MapApp.getAppDb().userDao();
     private FloatingActionButton floatingActionButton;
     private String avatarUri;
+    User user;
 
     public SetFragment() {
         // Required empty public constructor
@@ -96,6 +103,7 @@ public class SetFragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+
         super.onViewCreated(view, savedInstanceState);
         Eplace=view.findViewById(R.id.place);
         Eusername=view.findViewById(R.id.userName);
@@ -108,7 +116,29 @@ public class SetFragment extends Fragment {
         floatingActionButton=view.findViewById(R.id.floating_action_button);
         avatar=view.findViewById(R.id.avatar);
         loginOut=view.findViewById(R.id.login_out);
-        User user=userDao.findById(MapApp.getUserID());
+        save.setEnabled(false);//先禁用保存按钮，直到数据加载完成
+
+        // 创建 Retrofit 服务实例
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+
+        // 调用上传笔记的方法
+        Call<User> call = apiService.getUserById(MapApp.getUserID());
+        call.enqueue(new Callback<User>() {     // Callback<T> 的 T = User
+            @Override
+            public void onResponse(Call<User> call, Response<User> response) {
+                if (response.isSuccessful() && response.body() != null){
+                    user = response.body();
+
+                save.setEnabled(true);}
+            }
+
+            @Override
+            public void onFailure(Call<User> call, Throwable t) {
+                Log.d("debug","获取失败");
+
+            }
+        });
+       // User user=userDao.findById(MapApp.getUserID());
         ActivityResultLauncher<PickVisualMediaRequest> pickMedia =
                 registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
                     // Callback is invoked after the user selects a media item or closes the
@@ -161,8 +191,25 @@ public class SetFragment extends Fragment {
                 if (!TextUtils.isEmpty(slogan))
                     user.setSlogan(slogan);
                 if (!TextUtils.isEmpty(avatarUri))
-                    user.setAvatar(avatarUri);
-                userDao.updateUser(user);
+                    user.setAvatar(avatarUri);// user 类型为 User
+
+
+
+
+                Call<Void> call = apiService.updateUsers(user);
+                call.enqueue(new Callback<Void>() {
+                    @Override
+                    public void onResponse(Call<Void> call, Response<Void> response) {
+                        Log.d("debug","用户信息更新成功！");
+
+                    }
+
+                    @Override
+                    public void onFailure(Call<Void> call, Throwable t) {
+
+                    }
+                });
+
                 Toast.makeText(getActivity(),"保存成功！",Toast.LENGTH_LONG).show();
             }
         });

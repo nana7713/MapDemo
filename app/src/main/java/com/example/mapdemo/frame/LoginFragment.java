@@ -22,12 +22,18 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
 
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 
 public class LoginFragment extends Fragment {
@@ -38,9 +44,10 @@ public class LoginFragment extends Fragment {
     private Button login;
     private TextView register;
     private FragmentManager fragmentManager;
-    private List<User> users = userDao.getAll();
+    //private List<User> users = userDao.getAll();
+    private List<User> users;
     private String mParam1;
-    boolean isFromMap=false;
+    boolean isFromMap = false;
     private String mParam2;
     private CheckBox rememberPassword, autoLogin;
     EditText Eaccount, Epassword;
@@ -84,18 +91,37 @@ public class LoginFragment extends Fragment {
         login = view.findViewById(R.id.login);
         rememberPassword = view.findViewById(R.id.remember_password);
         autoLogin = view.findViewById(R.id.auto_login);
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
-        if (getArguments()!=null)
-          isFromMap=getArguments().getBoolean("isFromMap");
+        // 调用上传笔记的方法
+        Call<List<User>> call = apiService.getAllUsers();
+        call.enqueue(new Callback<List<User>>() {
+            @Override
+            public void onResponse(Call<List<User>> call, Response<List<User>> response) {
+                if (response.isSuccessful()) {
+                    users = response.body();
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<List<User>> call, Throwable t) {
+                Log.d("debug", "获取失败");
+
+            }
+        });
+
+        if (getArguments() != null)
+            isFromMap = getArguments().getBoolean("isFromMap");
         SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
         if (sharedPreferences != null) {
             Eaccount.setText(sharedPreferences.getString("account", ""));
-            if (sharedPreferences.getBoolean("remember",false)) {
+            if (sharedPreferences.getBoolean("remember", false)) {
                 rememberPassword.setChecked(true);
                 Epassword.setText(sharedPreferences.getString("password", ""));
             }
-            if (sharedPreferences.getBoolean("auto", false)){
-                MapApp.setUserID(sharedPreferences.getInt("uid",0));//自动登录需要设置uid 否则会导致直接跳转到的主页出现空指针异常
+            if (sharedPreferences.getBoolean("auto", false)) {
+                MapApp.setUserID(sharedPreferences.getInt("uid", 0));//自动登录需要设置uid 否则会导致直接跳转到的主页出现空指针异常
 
                 fragmentManager = getFragmentManager();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -105,7 +131,7 @@ public class LoginFragment extends Fragment {
         rememberPassword.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                if (!b){
+                if (!b) {
                     autoLogin.setChecked(false);
                 }
             }
@@ -113,7 +139,7 @@ public class LoginFragment extends Fragment {
         autoLogin.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                if (b){
+                if (b) {
                     rememberPassword.setChecked(true);
                 }
             }
@@ -133,22 +159,21 @@ public class LoginFragment extends Fragment {
                             Toast.makeText(getActivity(), "登录成功！", Toast.LENGTH_LONG).show();
                             fragmentManager = getFragmentManager();
                             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                            if (isFromMap){
-                               fragmentTransaction.replace(R.id.fragment, MapFragment.class, null).commit();//这样会导致fragment栈内有两个MapFragment
-                            }
-                            else{
+                            if (isFromMap) {
+                                fragmentTransaction.replace(R.id.fragment, MapFragment.class, null).commit();//这样会导致fragment栈内有两个MapFragment
+                            } else {
                                 fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
                             }
                             SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
                             SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putInt("uid",users.get(i).getUid());
+                            editor.putInt("uid", users.get(i).getUid());
                             editor.putString("account", account);
                             editor.putString("password", password);
 
                             if (rememberPassword.isChecked()) {
                                 editor.putBoolean("remember", true);
-                            }else{
-                                editor.putBoolean("remember",false);
+                            } else {
+                                editor.putBoolean("remember", false);
                             }
                             if (autoLogin.isChecked()) {
                                 editor.putBoolean("auto", true);
