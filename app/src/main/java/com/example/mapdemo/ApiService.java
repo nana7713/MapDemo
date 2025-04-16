@@ -21,7 +21,7 @@ public interface ApiService {
     @PUT("user/updateUsers")
     Call<Void> updateUsers(@Body User... user);
     @POST("user")
-    Call<Void> insertUser(@Body User user);
+    Call<User> insertUser(@Body User user);
     @GET("user/{id}")
     Call<User> getUserById(@Path ("id")int id);
     @GET("user/getAllUsers")

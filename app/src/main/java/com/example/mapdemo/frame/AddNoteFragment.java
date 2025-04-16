@@ -373,6 +373,10 @@ public class AddNoteFragment extends Fragment {
                             Log.d("DatabaseDebug", "新笔记经纬度: " + newNote.getLatitude() + ", " + newNote.getLongitude());
                         }
 
+                        User user = userDao.findById(newNote.user_id);
+                        if (user == null) {
+                            throw new IllegalArgumentException("User ID " + newNote.user_id + " 不存在！");
+                        }
                         noteDao.insertAll(newNote);
                         // 创建 Retrofit 服务实例
                         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);

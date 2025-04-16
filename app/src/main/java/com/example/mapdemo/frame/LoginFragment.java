@@ -92,26 +92,45 @@ public class LoginFragment extends Fragment {
         rememberPassword = view.findViewById(R.id.remember_password);
         autoLogin = view.findViewById(R.id.auto_login);
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-
-        // 调用上传笔记的方法
-        Call<List<User>> call = apiService.getAllUsers();
-        call.enqueue(new Callback<List<User>>() {
+        login.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onResponse(Call<List<User>> call, Response<List<User>> response) {
-                if (response.isSuccessful()) {
-                    users = response.body();
-                }
+            public void onClick(View view) {
+                // 调用上传笔记的方法
+                Call<List<User>> call = apiService.getAllUsers();
+                call.enqueue(new Callback<List<User>>() {
+                    String account = Eaccount.getText().toString().trim();
+                    String password = Epassword.getText().toString().trim();
 
-            }
+                    @Override
+                    public void onResponse(Call<List<User>> call, Response<List<User>> response) {
+                        if (response.isSuccessful()) {
+                            users = response.body();
+                            List<User> freshUsers = response.body();
 
-            @Override
-            public void onFailure(Call<List<User>> call, Throwable t) {
-                Log.d("debug", "获取失败");
-                users=userDao.getAll();
+                            new Thread(() -> {
+                                List<User> localUsers = userDao.getAll();
+                                for (User user : localUsers) {
+                                    userDao.delete(user);
+                                }
 
+                                userDao.insertAll(users.toArray(new User[0]));
+                                users = freshUsers;
+                                requireActivity().runOnUiThread(() -> verifyCredentials(account, password));
+                            }).start();
+                        }
+
+
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<User>> call, Throwable t) {
+                        Log.d("debug", "获取失败");
+                        users = userDao.getAll();
+
+                    }
+                });
             }
         });
-
         if (getArguments() != null)
             isFromMap = getArguments().getBoolean("isFromMap");
         SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
@@ -145,54 +164,7 @@ public class LoginFragment extends Fragment {
                 }
             }
         });
-        login.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String account = Eaccount.getText().toString();
-                String password = Epassword.getText().toString();
-                if (users.size() == 0)
-                    Toast.makeText(getActivity(), "不存在该用户", Toast.LENGTH_LONG).show();
-                for (int i = 0; i < users.size(); i++) {
-                    if (TextUtils.equals(users.get(i).account, account)) {
-                        if (TextUtils.equals(users.get(i).password, password)) {
-                            int uid = users.get(i).getUid();
-                            MapApp.setUserID(uid); // 保存用户 ID
-                            Toast.makeText(getActivity(), "登录成功！", Toast.LENGTH_LONG).show();
-                            fragmentManager = getFragmentManager();
-                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                            if (isFromMap) {
-                                fragmentTransaction.replace(R.id.fragment, MapFragment.class, null).commit();//这样会导致fragment栈内有两个MapFragment
-                            } else {
-                                fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
-                            }
-                            SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putInt("uid", users.get(i).getUid());
-                            editor.putString("account", account);
-                            editor.putString("password", password);
 
-                            if (rememberPassword.isChecked()) {
-                                editor.putBoolean("remember", true);
-                            } else {
-                                editor.putBoolean("remember", false);
-                            }
-                            if (autoLogin.isChecked()) {
-                                editor.putBoolean("auto", true);
-                            }
-                            editor.apply();
-
-                        } else {
-                            Toast.makeText(getActivity(), "密码错误", Toast.LENGTH_LONG).show();
-                        }
-
-                    }
-
-
-                }
-
-
-            }
-        });
         register = view.findViewById(R.id.jumpToRegister);
         register.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -202,5 +174,49 @@ public class LoginFragment extends Fragment {
                 fragmentTransaction.replace(R.id.fragment, RegisterFragment.class, null).commit();
             }
         });
+    }
+    // 统一的凭证验证逻辑
+    private void verifyCredentials(String account, String password) {
+       // String account = Eaccount.getText().toString();
+       // String password = Epassword.getText().toString();
+        if (users.size() == 0)
+            Toast.makeText(getActivity(), "不存在该用户", Toast.LENGTH_LONG).show();
+        for (int i = 0; i < users.size(); i++) {
+            if (TextUtils.equals(users.get(i).account, account)) {
+                if (TextUtils.equals(users.get(i).password, password)) {
+                    int uid = users.get(i).getUid();
+                    MapApp.setUserID(uid); // 保存用户 ID
+                    Toast.makeText(getActivity(), "登录成功！", Toast.LENGTH_LONG).show();
+                    fragmentManager = getFragmentManager();
+                    FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                    if (isFromMap) {
+                        fragmentTransaction.replace(R.id.fragment, MapFragment.class, null).commit();//这样会导致fragment栈内有两个MapFragment
+                    } else {
+                        fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
+                    }
+                    SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                    editor.putInt("uid", users.get(i).getUid());
+                    editor.putString("account", account);
+                    editor.putString("password", password);
+
+                    if (rememberPassword.isChecked()) {
+                        editor.putBoolean("remember", true);
+                    } else {
+                        editor.putBoolean("remember", false);
+                    }
+                    if (autoLogin.isChecked()) {
+                        editor.putBoolean("auto", true);
+                    }
+                    editor.apply();
+
+                } else {
+                    Toast.makeText(getActivity(), "密码错误", Toast.LENGTH_LONG).show();
+                }
+
+            }
+
+
+        }
     }
 }

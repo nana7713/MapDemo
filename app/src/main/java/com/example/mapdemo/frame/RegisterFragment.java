@@ -135,11 +135,13 @@ public class RegisterFragment extends Fragment implements View.OnClickListener {
                 }
                 if (!is_exist){
                     // 调用上传笔记的方法
-                    Call<Void> call2 = apiService.insertUser(user);
-                    call2.enqueue(new Callback<Void>() {
+                    Call<User> call2 = apiService.insertUser(user);
+                    call2.enqueue(new Callback<User>() {
                         @Override
-                        public void onResponse(Call<Void> call2, Response<Void> response) {
+                        public void onResponse(Call<User> call2, Response<User> response) {
                             if (response.isSuccessful()) {
+                                User serverUser = response.body();
+                                userDao.insertAll(serverUser);
                                 Log.d("API", "HTTP 成功，状态码: " + response.code());
                                 Log.d("API", "响应头: " + response.headers());
                                 // 检查是否是真正的成功（如 204 No Content）
@@ -153,7 +155,7 @@ public class RegisterFragment extends Fragment implements View.OnClickListener {
                         }
 
                         @Override
-                        public void onFailure(Call<Void> call2, Throwable t) {
+                        public void onFailure(Call<User> call2, Throwable t) {
 
                             Log.e("RegisterFragment", "网络错误：" + t.getMessage());
 
