@@ -7,13 +7,13 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -23,13 +23,10 @@ import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.ViewModel.MyViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import org.w3c.dom.Entity;
-
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -55,6 +52,7 @@ public class FragmentNote extends Fragment {
     NoteDao noteDao = MapApp.getAppDb().noteDao();
     private TextView no_note,noteAlert;
     private LinearLayout itemCard;
+    private MyViewModel viewModel;
 
 
     public FragmentNote() {
@@ -111,16 +109,19 @@ public class FragmentNote extends Fragment {
                 fragmentTransaction.replace(R.id.fragment, AddNoteFragment.class, null).addToBackStack(null).commit();
             }
         });
+        // 初始化 ViewModel
+        viewModel = new ViewModelProvider(this).get(MyViewModel.class);
 
-        List<NoteEntity> localNote = getLocalNote();
-        if (localNote != null && localNote.size() > 0) {
-            MList = noteToCard(localNote);
-            InitEvent();
-            noteAlert.setText(getString(R.string.note_alert,MList.size()+""));
-        } else {
-            no_note.setVisibility(View.VISIBLE);
-
-        }
+        // 观察 LiveData
+        viewModel.getNotesByUserID().observe(getViewLifecycleOwner(), notes -> {
+            if (notes != null && notes.size() > 0) {
+                MList = noteToCard(notes);
+                InitEvent();
+                noteAlert.setText(getString(R.string.note_alert, MList.size() + ""));
+            } else {
+                no_note.setVisibility(View.VISIBLE);
+            }
+        });
 
 
     }
@@ -165,10 +166,5 @@ RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getActivity()
     }
 
 
-    private List<NoteEntity> getLocalNote() {//根据用户id得到数据库中对应的笔记数据
-        List<NoteEntity> allNote = noteDao.findByUserID(MapApp.getUserID());
-        if (allNote.size() > 0) {
-            return allNote;
-        } else return null;
-    }
+
 }

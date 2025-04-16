@@ -31,8 +31,8 @@ public class MapApp extends Application {
         SDKInitializer.setCoordType(CoordType.BD09LL);
 
         // 从 SharedPreferences 中读取用户 ID
-        SharedPreferences sharedPreferences = getSharedPreferences("spRecord", MODE_PRIVATE);
-        UserID = sharedPreferences.getInt("uid", 0);
+        //SharedPreferences sharedPreferences = getSharedPreferences("spRecord", MODE_PRIVATE);
+        //UserID = sharedPreferences.getInt("uid", 0);
     }
     public static AppDatabase getAppDb() {
         return db;
@@ -41,10 +41,10 @@ public class MapApp extends Application {
     public static void setUserID(int uid) {
         UserID=uid;
         // 保存用户 ID 到 SharedPreferences
-        SharedPreferences sharedPreferences = getInstance().getSharedPreferences("spRecord", MODE_PRIVATE);
+        /*SharedPreferences sharedPreferences = getInstance().getSharedPreferences("spRecord", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt("uid", uid);
-        editor.apply();
+        editor.apply();*/
     }
     private static MapApp instance;
 

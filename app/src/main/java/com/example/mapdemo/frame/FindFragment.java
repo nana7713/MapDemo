@@ -2,13 +2,27 @@ package com.example.mapdemo.frame;
 
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.example.mapdemo.Adapter.PoiAdapter;
+import com.example.mapdemo.Database.NoteEntity;
+import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.ViewModel.MyViewModel;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -25,6 +39,9 @@ public class FindFragment extends Fragment {
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
+    private RecyclerView.Adapter poiAdapter;
+    private List<NoteEntity> MList;
+    private MyViewModel viewModel;
 
     public FindFragment() {
         // Required empty public constructor
@@ -62,5 +79,51 @@ public class FindFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.find_fragment, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        RecyclerView recyclerView = view.findViewById(R.id.recyclerView);
+        viewModel = new ViewModelProvider(this).get(MyViewModel.class);
+
+        // 观察 LiveData
+
+        viewModel.getAllNotes().observe(getViewLifecycleOwner(), notes -> {
+
+            if (notes != null && notes.size() > 0) {
+                 MList =notes;
+                poiAdapter = new PoiAdapter(MList, getActivity(), new PoiAdapter.CountInterface() {
+                    @Override
+                    public void Count(int count) {
+
+                    }
+                },new PoiAdapter.FragmentHelper(){
+                    @Override
+                    public void Helper(String title,String content,long id) {
+                        Bundle bundle=new Bundle();
+                        bundle.putString("title",title);
+                        bundle.putString("content",content);
+                        bundle.putBoolean("is_new",false);
+                        bundle.putLong("id",id);
+                        AddNoteFragment addNoteFragment=new AddNoteFragment();
+                        addNoteFragment.setArguments(bundle);
+                        FragmentManager fragmentManager = getFragmentManager();
+                        FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
+                        fragmentTransaction.replace(R.id.fragment, addNoteFragment,null).addToBackStack(null).commit();
+
+                    }
+                });
+                 recyclerView.setAdapter(poiAdapter);
+                 RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getActivity(),2);
+                 recyclerView.setLayoutManager(layoutManager);
+                } else MList =new ArrayList<>();
+        });
+
+
+
+
+
+
     }
 }

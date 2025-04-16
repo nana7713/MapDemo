@@ -107,6 +107,7 @@ public class LoginFragment extends Fragment {
             @Override
             public void onFailure(Call<List<User>> call, Throwable t) {
                 Log.d("debug", "获取失败");
+                users=userDao.getAll();
 
             }
         });

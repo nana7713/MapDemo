@@ -3,16 +3,16 @@ package com.example.mapdemo.Database;
 import androidx.room.*;
 
 @Entity(tableName = "note",indices = {@Index(value = {"user_name"}),            // 为userId列添加索引
-        @Index(value = {"userId"}) },foreignKeys = @ForeignKey(
-        entity = User.class, parentColumns = "uid", childColumns = "userId",onDelete =ForeignKey.CASCADE
+        @Index(value = {"user_id"}) },foreignKeys = @ForeignKey(
+        entity = User.class, parentColumns = "uid", childColumns = "user_id",onDelete =ForeignKey.CASCADE
         ))
 public class NoteEntity {
     @PrimaryKey(autoGenerate = true)
     public long id;
     @ColumnInfo(name = "user_name")
     public String user_name;
-    @ColumnInfo(name = "userId")
-    public int userId;
+    @ColumnInfo(name = "user_id")
+    public int user_id;
     @ColumnInfo(name = "slogan")
     public String slogan;
     @ColumnInfo(name = "content")
@@ -35,9 +35,9 @@ public class NoteEntity {
     public String PoiId;
 
     public NoteEntity(){}
-    public NoteEntity(String user_name, int userId, String slogan, String content, String title, String note_image_uri, String create_time, String avatar_uri, double longitude, double latitude, boolean isDirect, String poi_id) {
+    public NoteEntity(String user_name, int user_id, String slogan, String content, String title, String note_image_uri, String create_time, String avatar_uri, double longitude, double latitude, boolean isDirect, String poi_id) {
         this.user_name = user_name;
-        this.userId = userId;
+        this.user_id = user_id;
         this.slogan = slogan;
         this.content = content;
         this.title = title;
@@ -59,7 +59,7 @@ public class NoteEntity {
         return "NoteEntity{" +
                 "id=" + id +
                 ", user_name='" + user_name + '\'' +
-                ", userId=" + userId +
+                ", userId=" + user_id +
                 ", slogan='" + slogan + '\'' +
                 ", content='" + content + '\'' +
                 ", title='" + title + '\'' +
@@ -79,6 +79,14 @@ public class NoteEntity {
 
     public boolean isDirect() {
         return isDirect;
+    }
+
+    public int getUser_id() {
+        return user_id;
+    }
+
+    public void setUser_id(int user_id) {
+        this.user_id = user_id;
     }
 
     public void setDirect(boolean direct) {
@@ -101,12 +109,8 @@ public class NoteEntity {
         this.latitude = latitude;
     }
 
-    public int getUserId() {
-        return userId;
-    }
-
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public void setUserId(int user_id) {
+        this.user_id = user_id;
     }
 
     public long getId() {

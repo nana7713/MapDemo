@@ -7,7 +7,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,13 +21,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
+import com.example.mapdemo.ViewModel.MyViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -44,6 +53,7 @@ public class MyPageFragment extends Fragment {
     private FragmentManager fragmentManager;
     private TextView userName,place,age,gender;
     private ImageView avatar;
+    User user;
     UserDao userDao=MapApp.getAppDb().userDao();
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -97,18 +107,19 @@ public class MyPageFragment extends Fragment {
         age=view.findViewById(R.id.age);
         place=view.findViewById(R.id.place);
         gender=view.findViewById(R.id.gender);
+        MyViewModel myViewModel=new ViewModelProvider(this).get(MyViewModel.class);
+        myViewModel.getUserByID().observe(getViewLifecycleOwner(),user -> {
+            if (user != null) {
+                userName.setText(user.getName());
+                age.setText(user.getAge());
+                place.setText(user.getPlace());
+                gender.setText(user.getGender());
+                Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
+            } else {
+                Toast.makeText(getActivity(), "未找到该用户信息，请重新登录", Toast.LENGTH_LONG).show();
+            }
+        });
 
-        User user = userDao.findById(MapApp.getUserID());
-        if (user != null) {
-            userName.setText(user.getName());
-            age.setText(user.getAge());
-            place.setText(user.getPlace());
-            gender.setText(user.getGender());
-            Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
-        } else {
-            // 数据库中不存在该用户，给出提示信息
-            Toast.makeText(getActivity(), "未找到该用户信息，请重新登录", Toast.LENGTH_LONG).show();
-        }
 
 
         mStringList = new ArrayList<>();

@@ -26,5 +26,13 @@ public interface ApiService {
     Call<User> getUserById(@Path ("id")int id);
     @GET("user/getAllUsers")
     Call<List<User>> getAllUsers();
+    @GET("notes/user/{user_id}")
+    Call<List<NoteEntity>>getNoteByUserID(@Path("user_id")int userId);
+    @GET("notes")
+    Call<List<NoteEntity>> getAllNotes();
+    @GET("notes/{id}")
+    Call<List<NoteEntity>> getNoteByID(@Path("id")int id);
+    @GET("notes//poi/{poi_id}")
+    Call<List<NoteEntity>> getNoteByPoi(@Path("poi_id")int poiID);
 
 }
