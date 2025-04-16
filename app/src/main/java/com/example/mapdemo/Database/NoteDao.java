@@ -24,7 +24,7 @@ public interface NoteDao {
     List<NoteEntity> findByUserName(String name);
     @Query("select * from note where id like :id")
     NoteEntity findById(long id);
-    @Query("select * from note where userId like :uid")
+    @Query("select * from note where user_id like :uid")
     List<NoteEntity> findByUserID(int uid);
     @Query("select * from note where PoiId like :poiId")
     List<NoteEntity> findByPoiID(String poiId);

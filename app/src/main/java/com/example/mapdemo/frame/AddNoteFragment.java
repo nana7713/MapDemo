@@ -1,11 +1,8 @@
 package com.example.mapdemo.frame;
 
-import static com.example.mapdemo.CoordinateUtils.convertBD09ToGCJ02;
-
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -14,29 +11,19 @@ import android.graphics.BitmapFactory;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
-import android.Manifest;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 
-import android.os.Environment;
-import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -45,7 +32,6 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -57,12 +43,6 @@ import com.baidu.location.BDAbstractLocationListener;
 import com.baidu.location.BDLocation;
 import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
-import com.baidu.mapapi.map.BaiduMap;
-import com.baidu.mapapi.map.MapStatus;
-import com.baidu.mapapi.map.MapStatusUpdateFactory;
-import com.baidu.mapapi.map.MyLocationData;
-import com.baidu.mapapi.model.LatLng;
-import com.baidu.mapapi.utils.CoordinateConverter;
 import com.bumptech.glide.Glide;
 import com.example.mapdemo.ApiService;
 import com.example.mapdemo.CoordinateTransform;
@@ -73,19 +53,15 @@ import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
 import com.example.mapdemo.RetrofitClient;
+import com.example.mapdemo.ViewModel.MyViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -125,6 +101,8 @@ public class AddNoteFragment extends Fragment {
     ActivityResultLauncher<Intent> pickMedia;
     private double exifLatitude=0.0;
     private double exifLongitude=0.0;
+    User[] user = new User[1];
+
 
 
     // 新增权限请求码
@@ -210,11 +188,20 @@ public class AddNoteFragment extends Fragment {
         Etitle = view.findViewById(R.id.title);
         closeButton = view.findViewById(R.id.close_button);
         saveButton = view.findViewById(R.id.save_button);
-        User user=userDao.findById(MapApp.getUserID());
+        //User user=userDao.findById(MapApp.getUserID());
         saveTime = view.findViewById(R.id.save_time);
         saveWords=view.findViewById(R.id.save_words);
         note_image=view.findViewById(R.id.note_image);
         floatingActionButton=view.findViewById(R.id.floating_action_button);
+        MyViewModel viewModel = new ViewModelProvider(AddNoteFragment.this).get(MyViewModel.class);
+
+        // 观察 LiveData
+        viewModel.getUserByID().observe(getViewLifecycleOwner(), user1 -> {
+            if (user1 != null) {
+                user[0] =user1;
+            }
+
+        });
         pickMedia = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             // Callback is invoked after the user selects a media item or closes the
             // photo picker.
@@ -324,6 +311,7 @@ public class AddNoteFragment extends Fragment {
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 content = Econtent.getText().toString().trim();
                 title = Etitle.getText().toString().trim();
 
@@ -332,8 +320,9 @@ public class AddNoteFragment extends Fragment {
                 } else {
                     save_time = SimpleDateFormat.getDateTimeInstance().format(new Date(System.currentTimeMillis()));
                     saveTime.setText(save_time);
-                    User user = userDao.findById(MapApp.getUserID());//获取当前用户
 
+
+                    //User user = userDao.findById(MapApp.getUserID());//获取当前用户
                     double finalLat;
                     double finalLng;
                     if(exifLatitude==0&&exifLongitude==0)
@@ -350,28 +339,28 @@ public class AddNoteFragment extends Fragment {
                         NoteEntity newNote;
                         if (poiId==null){
                          newNote = new NoteEntity(
-                                user.getName(),
-                                MapApp.getUserID(),
-                                user.slogan,// 新增的字段
+                                user[0].getName(),
+                                user[0].getUid(),
+                                user[0].slogan,// 新增的字段
                                 content,//输入的笔记内容
                                 title,//标题
                                 noteImageUri,//用户选择图片的uri
                                 save_time,//保存时间
-                                user.getAvatar(),//头像
+                                user[0].getAvatar(),//头像
                                 finalLng,
                                 finalLat,
                                 isDirect,
                                 "0"
                         );}else {
                              newNote = new NoteEntity(
-                                    user.getName(),
-                                    MapApp.getUserID(),
-                                    user.slogan,// 新增的字段
+                                    user[0].getName(),
+                                    user[0].getUid(),
+                                    user[0].slogan,// 新增的字段
                                     content,//输入的笔记内容
                                     title,//标题
                                     noteImageUri,//用户选择图片的uri
                                     save_time,//保存时间
-                                    user.getAvatar(),//头像
+                                    user[0].getAvatar(),//头像
                                     longitude,
                                     latitude,
                                     isDirect,
@@ -417,14 +406,16 @@ public class AddNoteFragment extends Fragment {
 
                     }
                     else {
+                        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
                         NoteEntity noteEntity = noteDao.findById(id);
+
                         noteEntity.setContent(content);
                         noteEntity.setTitle(title);
                         if (noteImageUri!=null) {
                             noteEntity.setNote_image_uri(noteImageUri);
                         }
                         noteDao.updateNote(noteEntity);
-                        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+
 
                         // 调用上传笔记的方法
                         Call<Void> call = apiService.insert(noteEntity);

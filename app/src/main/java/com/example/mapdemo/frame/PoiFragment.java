@@ -7,8 +7,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.view.LayoutInflater;
@@ -17,13 +17,12 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.mapdemo.Adapter.MyAdapter;
 import com.example.mapdemo.Adapter.PoiAdapter;
-import com.example.mapdemo.Bean.NoteCard;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.ViewModel.MyViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
@@ -102,7 +101,42 @@ public class PoiFragment extends Fragment {
         TextView poiNameView = view.findViewById(R.id.poiName);
         noteAlert = view.findViewById(R.id.noteAlert);
         poiNameView.setText(poiName);
-        MList = getPoiNote();
+        MyViewModel viewModel = new ViewModelProvider(this).get(MyViewModel.class);
+
+        // 观察 LiveData
+        viewModel.getNotesByPoi().observe(getViewLifecycleOwner(), notes -> {
+            if (notes != null && notes.size() > 0) {
+                MList=notes;
+                poiAdapter = new PoiAdapter(MList, getActivity(), new PoiAdapter.CountInterface() {
+                    @Override
+                    public void Count(int count) {
+                        noteAlert.setText(getString(R.string.note_alert, count + ""));
+                    }
+                },new PoiAdapter.FragmentHelper(){
+                    @Override
+                    public void Helper(String title,String content,long id) {
+                        Bundle bundle=new Bundle();
+                        bundle.putString("title",title);
+                        bundle.putString("content",content);
+                        bundle.putBoolean("is_new",false);
+                        bundle.putLong("id",id);
+                        AddNoteFragment addNoteFragment=new AddNoteFragment();
+                        addNoteFragment.setArguments(bundle);
+                        fragmentManager = getFragmentManager();
+                        FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
+                        fragmentTransaction.replace(R.id.fragment, addNoteFragment,null).addToBackStack(null).commit();
+
+                    }
+                });
+
+                recyclerView.setAdapter(poiAdapter);
+                RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getActivity(),2);
+                recyclerView.setLayoutManager(layoutManager);
+
+                noteAlert.setText(getString(R.string.note_alert, MList.size() + ""));
+            }
+
+        });
         floatButton = view.findViewById(R.id.floating_action_button);
         floatButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -129,31 +163,7 @@ public class PoiFragment extends Fragment {
 
             }
         });
-        poiAdapter = new PoiAdapter(MList, getActivity(), new PoiAdapter.CountInterface() {
-            @Override
-            public void Count(int count) {
-                noteAlert.setText(getString(R.string.note_alert, count + ""));
-            }
-        },new PoiAdapter.FragmentHelper(){
-            @Override
-            public void Helper(String title,String content,long id) {
-                Bundle bundle=new Bundle();
-                bundle.putString("title",title);
-                bundle.putString("content",content);
-                bundle.putBoolean("is_new",false);
-                bundle.putLong("id",id);
-                AddNoteFragment addNoteFragment=new AddNoteFragment();
-                addNoteFragment.setArguments(bundle);
-                fragmentManager = getFragmentManager();
-                FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
-                fragmentTransaction.replace(R.id.fragment, addNoteFragment,null).addToBackStack(null).commit();
 
-            }
-        });
-
-        recyclerView.setAdapter(poiAdapter);
-        RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getActivity(),2);
-        recyclerView.setLayoutManager(layoutManager);
     }
     private List<NoteEntity> getPoiNote() {//根据用户id得到数据库中对应的笔记数据
         List<NoteEntity> allNote = noteDao.findByPoiID(poiId);
