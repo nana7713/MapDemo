@@ -21,7 +21,7 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
     private final MutableLiveData<List<NoteEntity>> allNotesLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<NoteEntity>> noteLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<NoteEntity>> poiNoteLiveData = new MutableLiveData<>();
-
+    private final MutableLiveData<List<User>> allUsersLiveData = new MutableLiveData<>();
 
     public LiveData<List<NoteEntity>> getNotesByUserID() {
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
@@ -67,6 +67,21 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
             }
         });
         return userLiveData;
+    }
+    public LiveData<List<User>> getAllUsers() {
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.getAllUsers().enqueue(new Callback<List<User>>() {
+            @Override
+            public void onResponse(Call<List<User>>call, Response<List<User>> response) {
+                allUsersLiveData.setValue(response.body());
+            }
+
+            @Override
+            public void onFailure(Call<List<User>> call, Throwable t) {
+                allUsersLiveData.setValue(null);
+            }
+        });
+        return allUsersLiveData;
     }
     public  LiveData<List<NoteEntity>> getAllNotes(){
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);

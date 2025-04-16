@@ -90,9 +90,6 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
 //            Glide.with(context)
 //                    .load(Uri.parse(coverUri))
 //                    .into(holder.cover);
-        } else {
-
-            return;
         }
         //holder.cover.setImageBitmap(bitmap);
         holder.createTime.setText(Mlist.get(position).getCreate_time());
