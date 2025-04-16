@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.text.TextUtils;
 import android.util.Log;
@@ -23,6 +24,9 @@ import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
 import com.example.mapdemo.RetrofitClient;
+import com.example.mapdemo.ViewModel.MyViewModel;
+
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -47,6 +51,7 @@ public class RegisterFragment extends Fragment implements View.OnClickListener {
     private String mParam1;
     private String mParam2;
     UserDao userDao= MapApp.getAppDb().userDao();
+    List<User> users;
     public RegisterFragment() {
         // Required empty public constructor
     }
@@ -111,39 +116,78 @@ public class RegisterFragment extends Fragment implements View.OnClickListener {
             Toast.makeText(getActivity(), "两次输入密码不一致",Toast.LENGTH_LONG).show();
             return;
         }
-        User user=new User(account,password);
-        userDao.insertAll(user);
-        // 创建 Retrofit 服务实例
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-        // 调用上传笔记的方法
-        Call<Void> call = apiService.insertUser(user);
-        call.enqueue(new Callback<Void>() {
-            @Override
-            public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.isSuccessful()) {
-                    Log.d("API", "HTTP 成功，状态码: " + response.code());
-                    Log.d("API", "响应头: " + response.headers());
-                    // 检查是否是真正的成功（如 204 No Content）
-                    if (response.code() == 204) {
-                        Log.w("API", "服务器返回 204，可能未实际保存数据");
+        User user=new User(account,password);
+
+        MyViewModel viewModel = new ViewModelProvider(this).get(MyViewModel.class);
+
+        // 观察 LiveData
+        viewModel.getAllUsers().observe(getViewLifecycleOwner(), users1 -> {
+            if (users1 != null && users1.size() > 0) {
+                users=users1;
+                boolean is_exist=false;
+                for (int i=0;i<users.size();i++){
+                    if (user.account.equals(users.get(i).account)){
+                        Toast.makeText(getActivity(), "用户已存在！", Toast.LENGTH_LONG).show();
+                        is_exist=true;
                     }
-                    Log.d("RegisterFragment", "用户注册成功");
-                } else {
-                    Log.e("RegisterFragment", "用户注册失败：" + response.code());
+
+                }
+                if (!is_exist){
+                    // 调用上传笔记的方法
+                    Call<Void> call2 = apiService.insertUser(user);
+                    call2.enqueue(new Callback<Void>() {
+                        @Override
+                        public void onResponse(Call<Void> call2, Response<Void> response) {
+                            if (response.isSuccessful()) {
+                                Log.d("API", "HTTP 成功，状态码: " + response.code());
+                                Log.d("API", "响应头: " + response.headers());
+                                // 检查是否是真正的成功（如 204 No Content）
+                                if (response.code() == 204) {
+                                    Log.w("API", "服务器返回 204，可能未实际保存数据");
+                                }
+                                Log.d("RegisterFragment", "用户注册成功");
+                            } else {
+                                Log.e("RegisterFragment", "用户注册失败：" + response.code());
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<Void> call2, Throwable t) {
+
+                            Log.e("RegisterFragment", "网络错误：" + t.getMessage());
+
+                        }
+                    });
+                    Toast.makeText(getActivity(),"注册成功",Toast.LENGTH_LONG).show();
+                    FragmentManager fragmentManager = getFragmentManager();
+                    FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                    fragmentTransaction.replace(R.id.fragment, LoginFragment.class, null).commit();
+                }
+
+
+            } else {
+               users=userDao.getAll();
+                boolean is_exist=false;
+                for (int i=0;i<users.size();i++){
+                    if (user.account.equals(users.get(i).account)){
+                        Toast.makeText(getActivity(), "用户已存在！", Toast.LENGTH_LONG).show();
+                        is_exist=true;
+                    }
+
+                }
+                if (!is_exist) {
+                    userDao.insertAll(user);
                 }
             }
-
-            @Override
-            public void onFailure(Call<Void> call, Throwable t) {
-
-                Log.e("RegisterFragment", "网络错误：" + t.getMessage());
-
-            }
         });
-        Toast.makeText(getActivity(),"注册成功",Toast.LENGTH_LONG).show();
-        FragmentManager fragmentManager = getFragmentManager();
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.fragment, LoginFragment.class, null).commit();
+
+
+
+
+
+
+
     }
     }
 //没有加入用户已存在审查功能，数据库会存在相同用户
