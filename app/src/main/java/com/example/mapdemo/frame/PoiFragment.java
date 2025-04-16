@@ -104,7 +104,7 @@ public class PoiFragment extends Fragment {
         MyViewModel viewModel = new ViewModelProvider(this).get(MyViewModel.class);
 
         // 观察 LiveData
-        viewModel.getNotesByUserID().observe(getViewLifecycleOwner(), notes -> {
+        viewModel.getNotesByPoi().observe(getViewLifecycleOwner(), notes -> {
             if (notes != null && notes.size() > 0) {
                 MList=notes;
                 poiAdapter = new PoiAdapter(MList, getActivity(), new PoiAdapter.CountInterface() {
