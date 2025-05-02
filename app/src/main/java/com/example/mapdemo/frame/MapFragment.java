@@ -10,17 +10,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
-import android.os.Bundle;
 import android.net.Uri;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
-
+import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -36,6 +27,14 @@ import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.baidu.location.BDAbstractLocationListener;
 import com.baidu.location.BDLocation;
@@ -82,8 +81,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-
-public class MapFragment extends Fragment  {
+public class MapFragment extends Fragment {
 
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
@@ -104,9 +102,7 @@ public class MapFragment extends Fragment  {
     private int mCurrentPage = 0; // 当前页码
     ListView listView;
     TextView textV;
-    String type="public";
-
-
+    String type = "public";
 
     private List<NoteEntity> noteList;
     private List<PoiInfo> mAllPoiList = new ArrayList<>();//所有POI数据
@@ -158,11 +154,8 @@ public class MapFragment extends Fragment  {
 
         //将在前端的东西与后端建立联系（findViewById）
         mMapView = view.findViewById(R.id.bmapView);
-        if (getArguments()!=null)
-        type=getArguments().getString("type");
-
-
-
+        if (getArguments() != null)
+            type = getArguments().getString("type");
 
         //获取地图实例化
         mBaiduMap = mMapView.getMap();
@@ -171,7 +164,7 @@ public class MapFragment extends Fragment  {
         //启用定位图层（显示蓝点）
         mBaiduMap.setMyLocationEnabled(true);
         listView = view.findViewById(R.id.searchResult);
-        textV= view.findViewById(R.id.inputText);
+        textV = view.findViewById(R.id.inputText);
         initPoiOverlay();//Poi覆盖物初始化
         //设置地图监听器
         mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
@@ -180,6 +173,7 @@ public class MapFragment extends Fragment  {
             public void onMapClick(LatLng latLng) {
                 mBaiduMap.hideInfoWindow();
             }//隐藏地图上的信息窗口
+
             @Override
             public void onMapPoiClick(MapPoi mapPoi) {
             }
@@ -190,47 +184,34 @@ public class MapFragment extends Fragment  {
         matype.setOnClickListener(new View.OnClickListener() {//设置地图类型切换按钮的点击事件
             @Override
             public void onClick(View v) {
-                /*BaiduMap map = mMapView.getMap();//获取当前地图实例
-                int type = map.getMapType();//获取当前地图类型
+                // 提前定义 fragmentManager 和 fragmentTransaction 变量
+                FragmentManager fragmentManager;
+                FragmentTransaction fragmentTransaction;
                 switch (type) {
-                    case MAP_TYPE_NORMAL:
-                        map.setMapType(MAP_TYPE_SATELLITE);//从普通地图切换到卫星地图
-                        break;
-                    case MAP_TYPE_SATELLITE:
-                        map.setMapType(MAP_TYPE_NORMAL);//从卫星地图切换到普通地图
-                        break;
-                }*/
-
-                switch (type){
-
                     case "public":
-
-                        FragmentManager fragmentManager=getFragmentManager();
-                        FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
-                        MapFragment mapFragment1=new MapFragment();
-                        Bundle bundle1=new Bundle();
-                        bundle1.putString("type","private");
-                        mapFragment1.setArguments(bundle1);
-                        fragmentTransaction.replace(R.id.fragment,mapFragment1,null).commit();
-
-
+                        fragmentManager = getParentFragmentManager();
+                        if (fragmentManager != null) {
+                            fragmentTransaction = fragmentManager.beginTransaction();
+                            MapFragment mapFragment1 = new MapFragment();
+                            Bundle bundle1 = new Bundle();
+                            bundle1.putString("type", "private");
+                            mapFragment1.setArguments(bundle1);
+                            fragmentTransaction.replace(R.id.fragment, mapFragment1, null).commit();
+                        }
                         break;
-
                     case "private":
-
-                        fragmentManager=getFragmentManager();
-                        fragmentTransaction = fragmentManager.beginTransaction();
-                        MapFragment mapFragment2=new MapFragment();
-                        Bundle bundle2=new Bundle();
-                        bundle2.putString("type","public");
-                        mapFragment2.setArguments(bundle2);
-
-                        fragmentTransaction.replace(R.id.fragment,mapFragment2,null).commit();
-                        type="public";
-
+                        fragmentManager = getParentFragmentManager();
+                        if (fragmentManager != null) {
+                            fragmentTransaction = fragmentManager.beginTransaction();
+                            MapFragment mapFragment2 = new MapFragment();
+                            Bundle bundle2 = new Bundle();
+                            bundle2.putString("type", "public");
+                            mapFragment2.setArguments(bundle2);
+                            fragmentTransaction.replace(R.id.fragment, mapFragment2, null).commit();
+                            type = "public";
+                        }
                         break;
                 }
-
             }
         });
 
@@ -302,7 +283,7 @@ public class MapFragment extends Fragment  {
 
         //权限请求逻辑
 
-        List<String> permissionList = new ArrayList<String>();//ArrayList是List接口的一个具体实现类，基于动态数组的实现，提供了对元素的快速随机访问
+        List<String> permissionList = new ArrayList<>();//ArrayList是List接口的一个具体实现类，基于动态数组的实现，提供了对元素的快速随机访问
         if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             permissionList.add(Manifest.permission.ACCESS_FINE_LOCATION);
         }
@@ -338,7 +319,7 @@ public class MapFragment extends Fragment  {
         // 设置地图标记点击监听器（点击单个标记或聚合点时触发）
         mBaiduMap.setOnMarkerClickListener(mClusterManager);
 
-       //如果是个人地图，显示缩略图
+        //如果是个人地图，显示缩略图
         if (Objects.equals(type, "private")) {
             mBaiduMap.setPoiTagEnable(PoiTagType.All, false);
             noteList = getLocalNote();
@@ -348,6 +329,7 @@ public class MapFragment extends Fragment  {
         }
 
     }
+
     BaiduMap.OnMapClickListener listener = new BaiduMap.OnMapClickListener() {
         /**
          * 地图单击事件回调函数
@@ -366,20 +348,19 @@ public class MapFragment extends Fragment  {
          */
         @Override
         public void onMapPoiClick(MapPoi mapPoi) {
-            Bundle bundle=new Bundle();
+            Bundle bundle = new Bundle();
 
-            bundle.putString("poiName",mapPoi.getName());
-            bundle.putString("poiId",mapPoi.getUid());
-            PoiFragment poiFragment=new PoiFragment();
+            bundle.putString("poiName", mapPoi.getName());
+            bundle.putString("poiId", mapPoi.getUid());
+            PoiFragment poiFragment = new PoiFragment();
             poiFragment.setArguments(bundle);
-            FragmentManager fragmentManager = getFragmentManager();
-            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-            fragmentTransaction.replace(R.id.fragment, poiFragment, null).addToBackStack(null).commit();
-            
-
+            FragmentManager fragmentManager = getParentFragmentManager();
+            if (fragmentManager != null) {
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                fragmentTransaction.replace(R.id.fragment, poiFragment, null).addToBackStack(null).commit();
+            }
         }
     };
-
 
 
     private List<NoteEntity> getLocalNote() {
@@ -473,10 +454,8 @@ public class MapFragment extends Fragment  {
                 return false;
             }
         });
-
-
-
     }
+
     //获取图片，并将其缩放到指定大小
     private BitmapDescriptor getNoteIcon(NoteEntity note) {
         if (note.getNote_image_uri() != null) {
@@ -484,7 +463,7 @@ public class MapFragment extends Fragment  {
                 InputStream inputStream = requireActivity().getContentResolver().openInputStream(Uri.parse(note.getNote_image_uri()));
                 Bitmap originalBitmap = BitmapFactory.decodeStream(inputStream);
                 // 调整图片大小
-                Bitmap resizedBitmap = resizeBitmap(originalBitmap, 100, 100); // 调整为 100x100 像素
+                Bitmap resizedBitmap = resizeBitmap(originalBitmap); // 调整为 100x100 像素
                 return BitmapDescriptorFactory.fromBitmap(resizedBitmap);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -493,27 +472,33 @@ public class MapFragment extends Fragment  {
         return BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding); // 默认图标
     }
 
-    private Bitmap resizeBitmap(Bitmap originalBitmap, int newWidth, int newHeight) {
+    // 调整图片大小，固定宽高为 100
+    private Bitmap resizeBitmap(Bitmap originalBitmap) {
+        int newWidth = 100;
+        int newHeight = 100;
         return Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, false);
     }
 
     //进入编辑页面
     private void openNoteEditFragment(long noteId) {
-        FragmentManager fragmentManager = getFragmentManager();
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        FragmentManager fragmentManager = getParentFragmentManager();
+        if (fragmentManager != null) {
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
 
-        AddNoteFragment addNoteFragment = AddNoteFragment.newInstance("", "");
-        Bundle args = new Bundle();
-        args.putLong("id", noteId);
-        args.putBoolean("is_new", false);
-        NoteEntity note = getNoteById(noteId);
-        if (note != null) {
-            args.putString("title", note.getTitle());
-            args.putString("content", note.getContent());
+            // 若 AddNoteFragment 没有 newInstance 方法，直接创建实例
+            AddNoteFragment addNoteFragment = new AddNoteFragment();
+            Bundle args = new Bundle();
+            args.putLong("id", noteId);
+            args.putBoolean("is_new", false);
+            NoteEntity note = getNoteById(noteId);
+            if (note != null) {
+                args.putString("title", note.getTitle());
+                args.putString("content", note.getContent());
+            }
+            addNoteFragment.setArguments(args);
+
+            fragmentTransaction.replace(R.id.fragment, addNoteFragment).addToBackStack(null).commit();
         }
-        addNoteFragment.setArguments(args);
-
-        fragmentTransaction.replace(R.id.fragment, addNoteFragment).addToBackStack(null).commit();
     }
 
     private NoteEntity getNoteById(long noteId) {
@@ -605,8 +590,7 @@ public class MapFragment extends Fragment  {
                                     //搜索下一页
                                     String KeyWord = textV.getText().toString();
                                     mPoiSearch.searchInCity(new PoiCitySearchOption().city(city).keyword(KeyWord).pageNum(curPage + 1));
-                                }
-                                else{
+                                } else {
                                     Toast.makeText(getActivity(), "已加载全部数据", Toast.LENGTH_SHORT).show();
                                 }
                             }
@@ -640,7 +624,7 @@ public class MapFragment extends Fragment  {
         }
     };
 
-//处理权限请求结果，当定位权限被授予时开始定位，否则提示用户需要权限
+    //处理权限请求结果，当定位权限被授予时开始定位，否则提示用户需要权限
 
     @SuppressLint("MissingSuperCall")
     @Override
@@ -668,6 +652,7 @@ public class MapFragment extends Fragment  {
         mlocationClient.start();//启动百度地图SDK中的定位客户端
 
     }
+
     //设置百度地图定位的各种参数
     private void initLocation() {
         LocationClientOption option = new LocationClientOption();//配置百度地图定位的各种参数
@@ -689,19 +674,21 @@ public class MapFragment extends Fragment  {
 
     //监听定位结果
     private class MylocationListener extends BDAbstractLocationListener {
-        private boolean isFirstLoc=true;
-        private boolean autoLocation=false;
+        private boolean isFirstLoc = true;
+        private boolean autoLocation = false;
+
         public void setAutoLocation(boolean b) {
-            autoLocation=b;
+            autoLocation = b;
         }
+
         //根据定位按钮修改
         @Override
         public void onReceiveLocation(BDLocation bdLocation) {
             //mapView 销毁后不在处理新接收的位置
-            if (bdLocation == null || mMapView == null){
+            if (bdLocation == null || mMapView == null) {
                 return;
             }
-            int type=bdLocation.getLocType();
+            int type = bdLocation.getLocType();
             //构建MyLocaltionData对象，通过MyLocationData.Builder设置经纬度
             MyLocationData locData = new MyLocationData.Builder()
                     //设置定位精度
@@ -709,7 +696,7 @@ public class MapFragment extends Fragment  {
                     // 此处设置开发者获取到的方向信息，顺时针0-360
                     .direction(bdLocation.getDirection()).latitude(bdLocation.getLatitude())
                     .longitude(bdLocation.getLongitude()).build();
-            BaiduMap bmap=mMapView.getMap();//获取地图实例
+            BaiduMap bmap = mMapView.getMap();//获取地图实例
             bmap.setMyLocationData(locData);//将定位数据设置到地图上
             /**
              *当首次定位或手动发起定位时，要放大地图，便于观察具体的位置
@@ -718,11 +705,11 @@ public class MapFragment extends Fragment  {
              */
 
 
-            if (isFirstLoc||autoLocation) {
+            if (isFirstLoc || autoLocation) {
                 //将首次定位标志设置为false
                 isFirstLoc = false;
                 //将手动发起定位标志设置为false
-                autoLocation=false;
+                autoLocation = false;
                 //创建Latlng对象，表示当前位置的经纬度
 
 
@@ -764,7 +751,7 @@ public class MapFragment extends Fragment  {
     //初始化覆盖物
     private void initPoiOverlay() {
         // 初始化 PoiOverlay
-        mPoiOverlay = new PoiOverlay(mBaiduMap,getActivity(),mAllPoiList) {
+        mPoiOverlay = new PoiOverlay(mBaiduMap, getActivity(), mAllPoiList) {
             @Override
             // 覆写此方法以改变默认点击行为
             public boolean onPoiClick(int index) {
@@ -790,7 +777,6 @@ public class MapFragment extends Fragment  {
     }
 
 
-
     // 显示 PoiInfo 的信息窗口
     private void showPoiInfoWindow(PoiInfo poi) {
         //隐藏当前显示的信息窗口
@@ -808,7 +794,7 @@ public class MapFragment extends Fragment  {
         address.setText(poi.getAddress());
         //计算信息窗口的偏移量
         Point screenPosition = mBaiduMap.getProjection().toScreenLocation(poi.getLocation());
-        int yOffset = (screenPosition.y > mMapView.getHeight()/2) ? -200 : 200;
+        int yOffset = (screenPosition.y > mMapView.getHeight() / 2) ? -200 : 200;
         // 创建信息窗口
         InfoWindow mInfoWindow = new InfoWindow(infoWindow, poi.getLocation(), -150);
 
@@ -828,6 +814,4 @@ public class MapFragment extends Fragment  {
             }
         });
     }
-
 }
-
