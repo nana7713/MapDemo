@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <com.baidu.mapapi.map.MapView
+        android:id="@+id/bmapView"
+        android:layout_width="483dp"
+        android:layout_height="841dp"
+        android:clickable="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.6"></com.baidu.mapapi.map.MapView>
+
+    <EditText
+        android:id="@+id/inputText"
+        android:layout_width="338dp"
+        android:layout_height="64dp"
+        android:background="@android:drawable/editbox_dropdown_dark_frame"
+        android:ems="10"
+        android:hint="请输入要搜索的内容"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:textColor="@color/white"
+        android:layout_marginTop="80dp"
+        app:layout_anchorGravity="top"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.507"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/bmapView"
+        app:layout_constraintVertical_bias="0.07" />
+
+    <ListView
+        android:id="@+id/searchResult"
+        android:layout_width="340dp"
+        android:layout_height="268dp"
+        android:background="@color/material_on_background_emphasis_high_type"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/inputText" />
+
+
+    <ImageButton
+        android:id="@+id/mapTypeBtn"
+        android:layout_width="51dp"
+        android:layout_height="50dp"
+
+        android:contentDescription="@string/map_type_icon_description"
+        app:layout_anchorGravity="top"
+        app:layout_constraintBottom_toTopOf="@+id/mylocation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@android:drawable/ic_dialog_map"
+        tools:ignore="MissingConstraints" />
+
+    <ImageButton
+        android:id="@+id/mylocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="100dp"
+        android:contentDescription="定位到当前位置"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_mylocation" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">MapDemo</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="Description">Description\n</string>
+    <string name="note_alert">There are %s notes</string>
+    <string name="note_words">%s words</string>
+    <string name="map_type_icon_description">切换地图类型</string>
+</resources>
