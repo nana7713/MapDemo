@@ -1,4 +1,4 @@
-package com.example.mapdemo;
+package com.example.mapdemo.voiceinput;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
