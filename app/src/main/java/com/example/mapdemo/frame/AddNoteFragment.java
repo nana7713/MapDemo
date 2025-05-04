@@ -102,6 +102,7 @@ public class AddNoteFragment extends Fragment {
     private double exifLatitude=0.0;
     private double exifLongitude=0.0;
     User[] user = new User[1];
+    NoteEntity noteEntity;
 
 
 
@@ -188,6 +189,7 @@ public class AddNoteFragment extends Fragment {
         Etitle = view.findViewById(R.id.title);
         closeButton = view.findViewById(R.id.close_button);
         saveButton = view.findViewById(R.id.save_button);
+        saveButton.setEnabled(false);
         //User user=userDao.findById(MapApp.getUserID());
         saveTime = view.findViewById(R.id.save_time);
         saveWords=view.findViewById(R.id.save_words);
@@ -199,6 +201,10 @@ public class AddNoteFragment extends Fragment {
         viewModel.getUserByID().observe(getViewLifecycleOwner(), user1 -> {
             if (user1 != null) {
                 user[0] =user1;
+                saveButton.setEnabled(true);
+            }else{
+                user[0]=userDao.findById(MapApp.getUserID());
+                saveButton.setEnabled(true);
             }
 
         });
@@ -230,18 +236,40 @@ public class AddNoteFragment extends Fragment {
             Etitle.setText(getArguments().getString("title"));
             is_new = getArguments().getBoolean("is_new");//判断是否是新添加的笔记
             id = getArguments().getLong("id");
-            NoteEntity noteEntity = noteDao.findById(id);
-            //Glide.with(getActivity()).load(noteEntity.note_image_uri).into(note_image);
-            if (noteEntity.note_image_uri != null) {
-                InputStream inputStream = null;
-                try {
-                    inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
-                } catch (FileNotFoundException e) {
-                    throw new RuntimeException(e);
+
+            viewModel.getNoteByID(id).observe(getViewLifecycleOwner(), noteEntity -> {
+                if (noteEntity!=null) {
+                    this.noteEntity=noteEntity;
+                    if (noteEntity.note_image_uri != null) {
+                        InputStream inputStream = null;
+                        try {
+                            inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
+                        } catch (FileNotFoundException e) {
+                            throw new RuntimeException(e);
+                        }
+                        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                        note_image.setImageBitmap(bitmap);
+                    }
+
                 }
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                note_image.setImageBitmap(bitmap);
-            }
+                else {
+                    this.noteEntity=noteDao.findById(id);
+                    //如果网络错误就获取本地数据库并渲染图片
+                    //if (noteEntity.note_image_uri != null) {
+                    //                InputStream inputStream = null;
+                    //                try {
+                    //                    inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
+                    //                } catch (FileNotFoundException e) {
+                    //                    throw new RuntimeException(e);
+                    //                }
+                    //                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                    //                note_image.setImageBitmap(bitmap);
+                    //            }
+                }
+            });
+
+            //Glide.with(getActivity()).load(noteEntity.note_image_uri).into(note_image);
+
         }
         if (Econtent.getText() != null) {
             saveWords.setText(getString(R.string.note_words,Econtent.getText().toString().trim().length()+""));
