@@ -7,6 +7,7 @@ import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
@@ -34,5 +35,7 @@ public interface ApiService {
     Call<NoteEntity> getNoteByID(@Path("id")long id);
     @GET("notes/poi/{poi_id}")
     Call<List<NoteEntity>> getNoteByPoi(@Path("poi_id")String poi_id);
+    @DELETE("notes/deletenote/{id}")
+    Call<Void> deleteNote(@Path("id") Long id);
 
 }

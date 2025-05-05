@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,18 +23,24 @@ import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Bean.NoteCard;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
 
 import org.w3c.dom.Text;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
     private List<NoteEntity> Mlist;
@@ -123,6 +130,25 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
     }
 
     private void deleteNote() {
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.deleteNote(Mlist.get(delete_position).getId()).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d("DELETE", "删除成功");
+                    // 可以在这里更新 UI，比如刷新列表
+                } else {
+                    Log.e("DELETE", "删除失败: " + response.code());
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e("DELETE", "请求失败: " + t.getMessage());
+
+            }
+        });
         noteDao.deleteById(Mlist.get(delete_position).getId());
         notifyItemRemoved(delete_position); //该方法不会重置position，因此如果不手动更新会导致越界访问
         Mlist.remove(delete_position);
