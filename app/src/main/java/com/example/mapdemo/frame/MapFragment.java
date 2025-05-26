@@ -404,7 +404,7 @@ public class MapFragment extends Fragment  {
 
         List<MyItem> items = new ArrayList<>();
         for (NoteEntity note : noteList) {
-            if (!Objects.equals(note.getPoiId(), "0")) continue;
+            if (!Objects.equals(note.getPoi_id(), "0")) continue;
             if (note.getLatitude() != 0.0 && note.getLongitude() != 0.0) {
 
                 CoordinateConverter converter = new CoordinateConverter();

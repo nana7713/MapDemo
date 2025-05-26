@@ -51,7 +51,7 @@
         tools:ignore="ExtraText">
         <meta-data
             android:name="com.baidu.lbsapi.API_KEY"
-            android:value="33NAHbyMGkx5qF1zc1OMJKicBWqqqY1N" />
+            android:value="XkcDieCT991QWP0TO4MMwy7lv8nzlKf0" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

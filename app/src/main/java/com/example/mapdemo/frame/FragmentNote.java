@@ -119,7 +119,9 @@ public class FragmentNote extends Fragment {
                 InitEvent();
                 noteAlert.setText(getString(R.string.note_alert, MList.size() + ""));
             } else {
-                no_note.setVisibility(View.VISIBLE);
+                MList=noteToCard(noteDao.findByUserID(MapApp.getUserID()));
+                InitEvent();
+                noteAlert.setText(getString(R.string.note_alert, MList.size() + ""));
             }
         });
 
