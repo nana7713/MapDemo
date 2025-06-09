@@ -122,7 +122,7 @@ public class RegisterFragment extends Fragment implements View.OnClickListener {
         MyViewModel viewModel = new ViewModelProvider(this).get(MyViewModel.class);
 
         // 观察 LiveData
-        viewModel.getAllUsers().observe(getViewLifecycleOwner(), users1 -> {
+        viewModel.getAllUsers().observe(getViewLifecycleOwner(), users1 -> {//bug:数据库里必须先至少有一个用户数据才能继续执行
             if (users1 != null && users1.size() > 0) {
                 users=users1;
                 boolean is_exist=false;

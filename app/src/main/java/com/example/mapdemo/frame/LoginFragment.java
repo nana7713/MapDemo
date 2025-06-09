@@ -109,7 +109,7 @@ public class LoginFragment extends Fragment {
 
                             new Thread(() -> {
                                 List<User> localUsers = userDao.getAll();
-                                for (User user : localUsers) {
+                               for (User user : localUsers) {
                                     userDao.delete(user);
                                 }
 
@@ -126,6 +126,7 @@ public class LoginFragment extends Fragment {
                     public void onFailure(Call<List<User>> call, Throwable t) {
                         Log.d("debug", "获取失败");
                         users = userDao.getAll();
+                        verifyCredentials(account, password);
 
                     }
                 });

@@ -19,7 +19,7 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
     private final MutableLiveData<User> userLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<NoteEntity>> userNotesLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<NoteEntity>> allNotesLiveData = new MutableLiveData<>();
-    private final MutableLiveData<List<NoteEntity>> noteLiveData = new MutableLiveData<>();
+    private final MutableLiveData<NoteEntity> noteLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<NoteEntity>> poiNoteLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<User>> allUsersLiveData = new MutableLiveData<>();
 
@@ -38,9 +38,9 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
         });
         return userNotesLiveData;
     }
-    public LiveData<List<NoteEntity>> getNotesByPoi() {
+    public LiveData<List<NoteEntity>> getNotesByPoi(String poiID) {
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-        apiService.getNoteByPoi(MapApp.getUserID()).enqueue(new Callback<List<NoteEntity>>() {
+        apiService.getNoteByPoi(poiID).enqueue(new Callback<List<NoteEntity>>() {
             @Override
             public void onResponse(Call<List<NoteEntity>> call, Response<List<NoteEntity>> response) {
                 poiNoteLiveData.setValue(response.body());
@@ -99,38 +99,24 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
         });
         return allNotesLiveData;
     }
-    public  LiveData<List<NoteEntity>> getNoteByID(int id){
+    public  LiveData<NoteEntity> getNoteByID(long id){
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-        apiService.getNoteByID(id).enqueue(new Callback<List<NoteEntity>>() {
+        apiService.getNoteByID(id).enqueue(new Callback<NoteEntity>() {
             @Override
-            public void onResponse(Call<List<NoteEntity>> call, Response<List<NoteEntity>> response) {
+            public void onResponse(Call<NoteEntity> call, Response<NoteEntity> response) {
                 noteLiveData.setValue(response.body());
             }
 
             @Override
-            public void onFailure(Call<List<NoteEntity>> call, Throwable t) {
+            public void onFailure(Call<NoteEntity> call, Throwable t) {
                 noteLiveData.setValue(null);
 
             }
         });
         return noteLiveData;
     }
-    public  LiveData<List<NoteEntity>> getNoteByPoi(int poiID){
-        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-        apiService.getNoteByPoi(poiID).enqueue(new Callback<List<NoteEntity>>() {
-            @Override
-            public void onResponse(Call<List<NoteEntity>> call, Response<List<NoteEntity>> response) {
-                poiNoteLiveData.setValue(response.body());
-            }
 
-            @Override
-            public void onFailure(Call<List<NoteEntity>> call, Throwable t) {
-                poiNoteLiveData.setValue(null);
 
-            }
-        });
-        return poiNoteLiveData;
-    }
 
 
 
