@@ -32,6 +32,7 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -66,6 +67,8 @@ import java.util.Date;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import com.example.mapdemo.voiceinput.VoiceInputHelper; // 导入 VoiceInputHelper 类
 
 /**
  * A simple {@link Fragment} subclass.
@@ -102,6 +105,8 @@ public class AddNoteFragment extends Fragment {
     private double exifLatitude=0.0;
     private double exifLongitude=0.0;
     User[] user = new User[1];
+    private VoiceInputHelper voiceInputHelper; //  VoiceInputHelper 成员变量
+    private Button voiceInputButton; // 按钮成员变量
 
 
 
@@ -193,6 +198,9 @@ public class AddNoteFragment extends Fragment {
         saveWords=view.findViewById(R.id.save_words);
         note_image=view.findViewById(R.id.note_image);
         floatingActionButton=view.findViewById(R.id.floating_action_button);
+        voiceInputButton = view.findViewById(R.id.voice_input_button);
+        voiceInputHelper = new VoiceInputHelper(requireActivity(), Econtent);
+        voiceInputButton.setOnClickListener(v -> voiceInputHelper.startVoiceInput());
         MyViewModel viewModel = new ViewModelProvider(AddNoteFragment.this).get(MyViewModel.class);
 
         // 观察 LiveData
@@ -449,6 +457,19 @@ public class AddNoteFragment extends Fragment {
             }
         });
 
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // 释放 VoiceInputHelper 资源
+        if (voiceInputHelper != null) {
+            voiceInputHelper.destroy();
+        }
+        // 停止定位客户端
+        if (mLocationClient != null && mLocationClient.isStarted()) {
+            mLocationClient.stop();
+        }
     }
     private void handleSelectedImage(Uri uri) {
         loadImageWithLocation(uri);
