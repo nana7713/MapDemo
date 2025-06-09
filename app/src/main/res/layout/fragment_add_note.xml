@@ -40,7 +40,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/baseline_check_24"/>
-
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -67,7 +66,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/note_words"/>
-
         </LinearLayout>
         <View
             android:layout_width="match_parent"
@@ -93,6 +91,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="@android:color/transparent"/>
+                <Button
+                    android:id="@+id/voice_input_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="语音输入" />
                 <ImageView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -100,5 +103,4 @@
             </LinearLayout>
         </ScrollView>
     </LinearLayout>
-
 </FrameLayout>

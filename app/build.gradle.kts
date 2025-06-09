@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-
 }
 
 android {
@@ -19,10 +18,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
-            // 设置支持的SO库架构（开发者可以根据需要，选择一个或多个平台的so）
-            abiFilters.addAll(arrayOf("armeabi", "armeabi-v7a", "arm64-v8a", "x86","x86_64"))
+            // 设置支持的 SO 库架构（开发者可以根据需要，选择一个或多个平台的 so）
+            abiFilters.addAll(listOf("armeabi", "armeabi-v7a", "arm64-v8a", "x86","x86_64"))
         }
-
     }
 
     buildTypes {
@@ -34,22 +32,24 @@ android {
             )
         }
     }
+
+    buildFeatures {
+        viewBinding = true
+
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    ndkVersion = "25.1.8937393"
-    defaultConfig {
-        ndk {
-            abiFilters.add("armeabi-v7a")
-            abiFilters.add("arm64-v8a")
-        }
-
-
-    }
     sourceSets {
         getByName("main") {
             jniLibs.srcDirs("libs")
+        }
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 }
@@ -63,6 +63,7 @@ dependencies {
     implementation(files("libs\\BaiduLBS_Android.jar"))
     implementation(libs.room.common)
     implementation(libs.room.common.jvm)
+    implementation(files("libs\\Msc.jar"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
