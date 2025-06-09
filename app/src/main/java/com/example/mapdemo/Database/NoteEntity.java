@@ -31,10 +31,9 @@ public class NoteEntity {
     public double latitude;
     @ColumnInfo(name="isDirect")
     public boolean isDirect;
-    @ColumnInfo(name="PoiId")
-    public String PoiId;
+    @ColumnInfo(name="poi_id")
+    public String poi_id;
 
-    public NoteEntity(){}
     public NoteEntity(String user_name, int user_id, String slogan, String content, String title, String note_image_uri, String create_time, String avatar_uri, double longitude, double latitude, boolean isDirect, String poi_id) {
         this.user_name = user_name;
         this.user_id = user_id;
@@ -47,11 +46,11 @@ public class NoteEntity {
         this.longitude = longitude;
         this.latitude = latitude;
         this.isDirect = isDirect;
-        this.PoiId = poi_id;
+        this.poi_id= poi_id;
     }
 
-    public String getPoiId() {
-        return PoiId;
+    public String getPoi_id() {
+        return poi_id;
     }
 
     @Override
@@ -69,12 +68,12 @@ public class NoteEntity {
                 ", longitude=" + longitude +
                 ", latitude=" + latitude +
                 ", isDirect=" + isDirect +
-                ", PoiId='" + PoiId + '\'' +
+                ", PoiId='" + poi_id + '\'' +
                 '}';
     }
 
-    public void setPoiId(String poiId) {
-        PoiId = poiId;
+    public void setPoi_id(String poiId) {
+        poi_id = poiId;
     }
 
     public boolean isDirect() {
