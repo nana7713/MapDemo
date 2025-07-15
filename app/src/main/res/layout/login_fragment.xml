@@ -4,13 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".frame.LoginFragment"
-    android:orientation="vertical">
-
+    android:orientation="horizontal">
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
         android:orientation="vertical"
-        >
+        android:layout_marginBottom="50dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -33,11 +33,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_marginLeft="10dp"
-                android:paddingLeft="5dp"
                 android:background="@drawable/frame"
                 android:hint=" 请输入用户名或手机号"
-                android:textSize="20dp"
-                android:inputType="text"/>
+                android:inputType="text"
+                android:paddingLeft="5dp"
+                android:textSize="20dp" />
         </LinearLayout>
 
         <LinearLayout
@@ -58,11 +58,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_marginLeft="10dp"
-                android:textSize="20dp"
-                android:paddingLeft="5dp"
                 android:background="@drawable/frame"
                 android:hint=" 请输入密码"
-                android:inputType="numberPassword"/>
+                android:inputType="numberPassword"
+                android:paddingLeft="5dp"
+                android:textSize="20dp" />
         </LinearLayout>
 
         <LinearLayout
@@ -85,31 +85,35 @@
                 android:text="自动登录" />
 
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
+
             <Button
+
                 android:id="@+id/login"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"
                 android:background="@drawable/btn"
-                android:textColor="@color/white"
                 android:text="登录"
-                android:textSize="25dp"/>
+                android:textColor="@color/white"
+                android:textSize="25dp" />
         </LinearLayout>
+
         <TextView
             android:id="@+id/jumpToRegister"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="还没有账号？"
-            android:clickable="true"
-            android:textColor="@color/blue"
-            android:textSize="20dp"
             android:layout_gravity="right"
+            android:layout_marginTop="5dp"
             android:layout_marginRight="20dp"
-            android:layout_marginTop="5dp"/>
+            android:clickable="true"
+            android:text="还没有账号？"
+            android:textColor="@color/blue"
+            android:textSize="20dp" />
     </LinearLayout>
 
 </LinearLayout>

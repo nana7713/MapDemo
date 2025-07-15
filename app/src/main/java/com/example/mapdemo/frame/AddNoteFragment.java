@@ -3,6 +3,7 @@ package com.example.mapdemo.frame;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -51,6 +52,7 @@ import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
+import com.example.mapdemo.ImageUploadResponse;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
 import com.example.mapdemo.RetrofitClient;
@@ -64,6 +66,9 @@ import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -109,7 +114,13 @@ public class AddNoteFragment extends Fragment {
     private Button voiceInputButton; // 按钮成员变量
     NoteEntity noteEntity;
 
+    private Context appContext;
 
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        appContext = context.getApplicationContext();
+    }
 
     // 新增权限请求码
     private static final int MEDIA_LOCATION_PERMISSION_CODE = 2021;
@@ -248,15 +259,15 @@ public class AddNoteFragment extends Fragment {
             viewModel.getNoteByID(id).observe(getViewLifecycleOwner(), noteEntity -> {
                 if (noteEntity!=null) {
                     this.noteEntity=noteEntity;
-                    if (noteEntity.note_image_uri != null) {
-                        InputStream inputStream = null;
-                        try {
-                            inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
-                        } catch (FileNotFoundException e) {
-                            throw new RuntimeException(e);
-                        }
-                        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                        note_image.setImageBitmap(bitmap);
+                    String imgUrl = noteEntity.note_image_uri;
+                    if (imgUrl != null && !imgUrl.trim().isEmpty()) {
+                        // 用 Glide 加载网络图片
+                        Glide.with(requireContext())
+                                .load(imgUrl)          // 支持 http/https
+                                .into(note_image);
+                    } else {
+                        // 没有图片时清空 ImageView
+                        note_image.setImageDrawable(null);
                     }
 
                 }
@@ -413,9 +424,11 @@ public class AddNoteFragment extends Fragment {
                         if (user == null) {
                             throw new IllegalArgumentException("User ID " + newNote.user_id + " 不存在！");
                         }
-                        noteDao.insertAll(newNote);
+                        long realId=noteDao.insert(newNote);
+
                         // 创建 Retrofit 服务实例
                         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+
 
                         // 调用上传笔记的方法
                         Call<Void> call = apiService.insert(newNote);
@@ -430,6 +443,50 @@ public class AddNoteFragment extends Fragment {
                                         Log.w("API", "服务器返回 204，可能未实际保存数据");
                                     }
                                     Log.d("RegisterFragment", "笔记上传成功");
+                                    // 准备文件参数
+                                    InputStream inputStream = null;
+                                    if (noteImageUri!=null){
+                                        try {
+                                            inputStream = appContext.getContentResolver().openInputStream(Uri.parse(noteImageUri));
+                                        } catch (FileNotFoundException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        byte[] bytes = null;
+                                        try {
+                                            bytes = new byte[inputStream.available()];
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        try {
+                                            inputStream.read(bytes);
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), bytes);
+                                        MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", "image.jpg", requestFile);
+                                        RequestBody noteIdBody = RequestBody.create(
+                                                MediaType.parse("text/plain"),
+                                                String.valueOf(realId)
+                                        );
+                                        apiService.uploadImage(noteIdBody, filePart).enqueue(new Callback<ImageUploadResponse>() {
+                                            @Override
+                                            public void onResponse(Call<ImageUploadResponse> call, Response<ImageUploadResponse> response) {
+                                                if (response.isSuccessful()) {
+                                                    Log.d("API", "图片上传成功");
+                                                } else {
+                                                    Log.e("API", "图片上传失败：" + response.code());
+                                                }
+                                            }
+
+                                            @Override
+                                            public void onFailure(Call<ImageUploadResponse> call, Throwable t) {
+                                                Log.e("API", "图片上传失败：" + t.getMessage());
+                                            }
+                                        });
+
+                                    }
+
+
                                 } else {
                                     Log.e("RegisterFragment", "笔记上传失败：" + response.code());
                                 }
@@ -447,18 +504,56 @@ public class AddNoteFragment extends Fragment {
                     }
                     else {
                         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-                        NoteEntity noteEntity = noteDao.findById(id);
+
 
                         noteEntity.setContent(content);
                         noteEntity.setTitle(title);
-                        if (noteImageUri!=null) {
-                            noteEntity.setNote_image_uri(noteImageUri);
+                        InputStream inputStream = null;
+                        if (noteImageUri!=null){
+                            try {
+                                inputStream = appContext.getContentResolver().openInputStream(Uri.parse(noteImageUri));
+                            } catch (FileNotFoundException e) {
+                                throw new RuntimeException(e);
+                            }
+                            byte[] bytes = null;
+                            try {
+                                bytes = new byte[inputStream.available()];
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            try {
+                                inputStream.read(bytes);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), bytes);
+                            MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", "image.jpg", requestFile);
+                            RequestBody noteIdBody = RequestBody.create(
+                                    MediaType.parse("text/plain"),
+                                    String.valueOf(id)
+                            );
+                            apiService.uploadImage(noteIdBody, filePart).enqueue(new Callback<ImageUploadResponse>() {
+                                @Override
+                                public void onResponse(Call<ImageUploadResponse> call, Response<ImageUploadResponse> response) {
+                                    if (response.isSuccessful()) {
+                                        Log.d("API", "图片上传成功");
+                                    } else {
+                                        Log.e("API", "图片上传失败：" + response.code());
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<ImageUploadResponse> call, Throwable t) {
+                                    Log.e("API", "图片上传失败：" + t.getMessage());
+                                }
+                            });
+
                         }
                         noteDao.updateNote(noteEntity);
 
 
                         // 调用上传笔记的方法
-                        Call<Void> call = apiService.insert(noteEntity);
+                        Call<Void> call = apiService.updateNote(id,noteEntity);
                         call.enqueue(new Callback<Void>() {
                             @Override
                             public void onResponse(Call<Void> call, Response<Void> response) {

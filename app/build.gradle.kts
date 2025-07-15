@@ -80,7 +80,8 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.0.2")
     implementation("com.squareup.retrofit2:converter-gson:2.0.2")
     implementation ("com.android.support:appcompat-v7")
-
+    implementation ("com.google.android.material:material:1.9.0")
+    implementation ("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
 }
 buildscript {

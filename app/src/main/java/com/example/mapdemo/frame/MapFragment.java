@@ -2,16 +2,14 @@ package com.example.mapdemo.frame;
 
 import static android.content.Context.INPUT_METHOD_SERVICE;
 import static com.baidu.mapapi.map.BaiduMap.MAP_TYPE_NORMAL;
-import static com.baidu.mapapi.map.BaiduMap.MAP_TYPE_SATELLITE;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -68,6 +66,7 @@ import com.baidu.mapapi.search.poi.PoiIndoorResult;
 import com.baidu.mapapi.search.poi.PoiResult;
 import com.baidu.mapapi.search.poi.PoiSearch;
 import com.baidu.mapapi.utils.CoordinateConverter;
+import com.bumptech.glide.Glide;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.MapApp;
@@ -76,8 +75,6 @@ import com.example.mapdemo.PoiAdapter;
 import com.example.mapdemo.PoiOverlay;
 import com.example.mapdemo.R;
 
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -415,26 +412,29 @@ public class MapFragment extends Fragment  {
 
                 // 转换为百度坐标（BD-09）
                 LatLng point = converter.convert();
-
-
-                // 获取笔记中的图片
-                BitmapDescriptor icon = getNoteIcon(note);
-
                 Bundle bundle = new Bundle();
                 bundle.putLong("note_id", note.getId());
-
                 //点聚合需要自定义一个类用来implements ClusterItem这个点聚合方法的类
                 MyItem item = new MyItem(point, bundle);
-                item.setBitmapDescriptor(icon);
-                items.add(item);
-                // 创建MarkerOptions并设置锚点
-                MarkerOptions markerOptions = new MarkerOptions()
-                        .position(point)
-                        .icon(icon)
-                        .anchor(0.5f, 1.0f); // 设置锚点为图片底部中心
 
-                // 添加标记到地图
-                mBaiduMap.addOverlay(markerOptions);
+                items.add(item);
+
+                // 2. 先用默认图标占位
+                BitmapDescriptor defaultIcon =
+                        BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding);
+                MarkerOptions options = new MarkerOptions()
+                        .position(point)
+                        .icon(defaultIcon)
+                        .anchor(0.5f, 1.0f);
+
+                Marker marker = (Marker) mBaiduMap.addOverlay(options);
+
+                // 3. 异步加载真实图标并替换
+                loadNoteIconAsync(note, marker,item);
+
+
+
+
             }
         }
 
@@ -477,20 +477,30 @@ public class MapFragment extends Fragment  {
 
 
     }
-    //获取图片，并将其缩放到指定大小
-    private BitmapDescriptor getNoteIcon(NoteEntity note) {
-        if (note.getNote_image_uri() != null) {
+    /**
+     * 后台线程用 Glide 加载网络图片，完成后把图标更新到 Marker
+     */
+    private void loadNoteIconAsync(NoteEntity note, Marker marker, MyItem item) {
+        String imgUrl = note.getNote_image_uri();
+        if (imgUrl == null || imgUrl.trim().isEmpty()) return;   // 无图直接保留默认图标
+
+        AsyncTask.execute(() -> {
             try {
-                InputStream inputStream = requireActivity().getContentResolver().openInputStream(Uri.parse(note.getNote_image_uri()));
-                Bitmap originalBitmap = BitmapFactory.decodeStream(inputStream);
-                // 调整图片大小
-                Bitmap resizedBitmap = resizeBitmap(originalBitmap, 100, 100); // 调整为 100x100 像素
-                return BitmapDescriptorFactory.fromBitmap(resizedBitmap);
-            } catch (FileNotFoundException e) {
+                Bitmap bmp = Glide.with(requireContext())
+                        .asBitmap()
+                        .load(imgUrl)
+                        .submit(100, 100)   // 输出 100×100
+                        .get();
+                BitmapDescriptor realIcon = BitmapDescriptorFactory.fromBitmap(bmp);
+
+                // 回到主线程更新图标
+                requireActivity().runOnUiThread(() -> {marker.setIcon(realIcon);
+                item.setBitmapDescriptor(realIcon);});
+            } catch (Exception e) {
+                // 加载失败仍保持默认图标
                 e.printStackTrace();
             }
-        }
-        return BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding); // 默认图标
+        });
     }
 
     private Bitmap resizeBitmap(Bitmap originalBitmap, int newWidth, int newHeight) {

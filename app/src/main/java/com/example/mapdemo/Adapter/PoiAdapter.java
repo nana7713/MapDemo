@@ -99,9 +99,9 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-//            Glide.with(context)
-//                    .load(Uri.parse(coverUri))
-//                    .into(holder.cover);
+            Glide.with(context)
+                    .load(Uri.parse(coverUri))
+                    .into(holder.cover);
         } else {
 
             return;

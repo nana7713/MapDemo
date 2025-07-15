@@ -23,6 +23,7 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
     private final MutableLiveData<List<NoteEntity>> poiNoteLiveData = new MutableLiveData<>();
     private final MutableLiveData<List<User>> allUsersLiveData = new MutableLiveData<>();
 
+
     public LiveData<List<NoteEntity>> getNotesByUserID() {
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
         apiService.getNoteByUserID(MapApp.getUserID()).enqueue(new Callback<List<NoteEntity>>() {

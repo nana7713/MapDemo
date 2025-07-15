@@ -86,18 +86,9 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         // 处理封面图片加载，添加异常捕获
         String coverUri = Mlist.get(position).getCover();
         if (coverUri != null && !coverUri.isEmpty()) {
-            try {
-                InputStream inputStream = context.getContentResolver().openInputStream(Uri.parse(coverUri));
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                holder.cover.setImageBitmap(bitmap);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-//            Glide.with(context)
-//                    .load(Uri.parse(coverUri))
-//                    .into(holder.cover);
+            Glide.with(context)
+                    .load(Uri.parse(coverUri))
+                    .into(holder.cover);
         }
         //holder.cover.setImageBitmap(bitmap);
         holder.createTime.setText(Mlist.get(position).getCreate_time());
