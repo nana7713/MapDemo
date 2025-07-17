@@ -424,17 +424,17 @@ public class AddNoteFragment extends Fragment {
                         if (user == null) {
                             throw new IllegalArgumentException("User ID " + newNote.user_id + " 不存在！");
                         }
-                        long realId=noteDao.insert(newNote);
+
 
                         // 创建 Retrofit 服务实例
                         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
 
                         // 调用上传笔记的方法
-                        Call<Void> call = apiService.insert(newNote);
-                        call.enqueue(new Callback<Void>() {
+                        Call<NoteEntity> call = apiService.insert(newNote);
+                        call.enqueue(new Callback<NoteEntity>() {
                             @Override
-                            public void onResponse(Call<Void> call, Response<Void> response) {
+                            public void onResponse(Call<NoteEntity> call, Response<NoteEntity> response) {
                                 if (response.isSuccessful()) {
                                     Log.d("API", "HTTP 成功，状态码: " + response.code());
                                     Log.d("API", "响应头: " + response.headers());
@@ -443,6 +443,7 @@ public class AddNoteFragment extends Fragment {
                                         Log.w("API", "服务器返回 204，可能未实际保存数据");
                                     }
                                     Log.d("RegisterFragment", "笔记上传成功");
+                                    long realId=response.body().id;
                                     // 准备文件参数
                                     InputStream inputStream = null;
                                     if (noteImageUri!=null){
@@ -493,7 +494,7 @@ public class AddNoteFragment extends Fragment {
                             }
 
                             @Override
-                            public void onFailure(Call<Void> call, Throwable t) {
+                            public void onFailure(Call<NoteEntity> call, Throwable t) {
 
                                 Log.e("RegisterFragment", "网络错误：" + t.getMessage());
 

@@ -20,7 +20,7 @@ import retrofit2.http.Path;
 
 public interface ApiService {
     @POST("notes/save")
-    Call<Void> insert(@Body NoteEntity noteEntity);
+    Call<NoteEntity> insert(@Body NoteEntity noteEntity);
     @Multipart
     @POST("notes/upload/image")
     Call<ImageUploadResponse> uploadImage(
