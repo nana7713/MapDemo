@@ -97,7 +97,7 @@
         android:id="@+id/content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
+        android:text=""
         android:ellipsize="end"
         android:maxLines="2"
         android:textSize="15dp"/>
@@ -108,5 +108,25 @@
         android:layout_height="wrap_content"
         android:text="Delete"
         />
+        <!-- 新增评论按钮 -->
+        <Button
+            android:id="@+id/btn_comment"
+            android:layout_gravity="end|bottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_comment"
+            android:drawablePadding="4dp"
+            android:text="评论" />
+        <!-- 新增：评论数量 -->
+        <TextView
+            android:id="@+id/tv_comment_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0条评论"
+            android:textSize="12sp"
+            android:layout_gravity="end|bottom"
+            android:layout_marginLeft="8dp"
+            android:textColor="@android:color/darker_gray"/>
+
     </LinearLayout>
 </LinearLayout>

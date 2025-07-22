@@ -92,6 +92,25 @@ public class LoginFragment extends Fragment {
         rememberPassword = view.findViewById(R.id.remember_password);
         autoLogin = view.findViewById(R.id.auto_login);
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        login.setOnClickListener(v -> {
+            String account = Eaccount.getText().toString().trim();
+            String password = Epassword.getText().toString().trim();
+
+            // 强制使用本地验证，更稳定可靠
+            new Thread(() -> {
+                User user = userDao.getUserByAccount(account);
+                if (getActivity() != null) {
+                    requireActivity().runOnUiThread(() -> {
+                        if (user != null && user.password.equals(password)) {
+                            loginSuccess(user);
+                        } else {
+                            Toast.makeText(getActivity(), "登录失败，请检查账号或密码", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }).start();
+        });
+        /*
         login.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -131,6 +150,7 @@ public class LoginFragment extends Fragment {
                 });
             }
         });
+        */
         if (getArguments() != null)
             isFromMap = getArguments().getBoolean("isFromMap");
         SharedPreferences sharedPreferences = getActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
@@ -217,6 +237,50 @@ public class LoginFragment extends Fragment {
             }
 
 
+
+        }
+    }
+    private void loginSuccess(User user) {
+        MapApp.setUserID(user.getUid());
+        // 确保用户信息保存到本地数据库
+        new Thread(() -> {
+            User existing = userDao.findById(user.getUid());
+            if (existing == null) {
+                userDao.insertAll(user);
+            } else {
+                // 更新本地用户信息
+                userDao.updateUser(user);
+            }
+        }).start();
+        // 保存登录状态
+        SharedPreferences sharedPreferences = requireActivity().getSharedPreferences("spRecord", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt("uid", user.getUid());
+        editor.putString("account", user.account);
+
+        if (rememberPassword.isChecked()) {
+            editor.putString("password", user.password);
+            editor.putBoolean("remember", true);
+        } else {
+            editor.remove("password");
+            editor.putBoolean("remember", false);
+        }
+
+        editor.putBoolean("auto", autoLogin.isChecked());
+        editor.apply();
+
+        // 导航到主页
+        navigateToHomePage();
+    }
+
+    private void navigateToHomePage() {
+        fragmentManager = getParentFragmentManager();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+
+        if (isFromMap) {
+            fragmentTransaction.replace(R.id.fragment, MapFragment.class, null).commit();
+        } else {
+            fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
         }
     }
 }

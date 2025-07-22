@@ -53,21 +53,58 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
         });
         return poiNoteLiveData;
     }
-    public LiveData<User> getUserByID() {
+//    public LiveData<User> getUserByID() {
+//
+//        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+//        apiService.getUserById(MapApp.getUserID()).enqueue(new Callback<User>() {
+//            @Override
+//            public void onResponse(Call<User>call, Response<User> response) {
+//                userLiveData.setValue(response.body());
+//            }
+//
+//            @Override
+//            public void onFailure(Call<User> call, Throwable t) {
+//                userLiveData.setValue(null);
+//            }
+//        });
+//        return userLiveData;
+//    }
+public LiveData<User> getUserByID() {
+    // 创建LiveData
+    MutableLiveData<User> result = new MutableLiveData<>();
+
+    new Thread(() -> {
+        // 首先尝试从本地数据库获取
+        User localUser = MapApp.getAppDb().userDao().findById(MapApp.getUserID());
+        if (localUser != null) {
+            result.postValue(localUser);
+        }
+
+        // 然后尝试从网络获取
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
         apiService.getUserById(MapApp.getUserID()).enqueue(new Callback<User>() {
             @Override
-            public void onResponse(Call<User>call, Response<User> response) {
-                userLiveData.setValue(response.body());
+            public void onResponse(Call<User> call, Response<User> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    User serverUser = response.body();
+                    result.postValue(serverUser);
+
+                    // 保存到本地数据库
+                    new Thread(() -> {
+                        MapApp.getAppDb().userDao().insertAll(serverUser);
+                    }).start();
+                }
             }
 
             @Override
             public void onFailure(Call<User> call, Throwable t) {
-                userLiveData.setValue(null);
+                // 网络失败时不处理，使用本地数据
             }
         });
-        return userLiveData;
-    }
+    }).start();
+
+    return result;
+}
     public LiveData<List<User>> getAllUsers() {
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
         apiService.getAllUsers().enqueue(new Callback<List<User>>() {

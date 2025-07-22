@@ -98,32 +98,52 @@ public class FragmentNote extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         recyclerView = view.findViewById(R.id.recyclerView);
         floatButton = view.findViewById(R.id.floating_action_button);
-        no_note=view.findViewById(R.id.no_note);
-        noteAlert=view.findViewById(R.id.noteAlert);
+        no_note = view.findViewById(R.id.no_note);
+        noteAlert = view.findViewById(R.id.noteAlert);
+
+        // 先加载本地数据库数据
+        new Thread(() -> {
+            List<NoteEntity> localNotes = noteDao.findByUserID(MapApp.getUserID());
+            requireActivity().runOnUiThread(() -> {
+                if (localNotes != null && !localNotes.isEmpty()) {
+                    MList = noteToCard(localNotes);
+                    InitEvent();
+                    noteAlert.setText(getString(R.string.note_alert, MList.size() + ""));
+                    no_note.setVisibility(View.GONE);
+                } else {
+                    no_note.setVisibility(View.VISIBLE);
+                }
+            });
+        }).start();
+
+        // 再加载网络数据（如果有）
+        viewModel = new ViewModelProvider(this).get(MyViewModel.class);
+        viewModel.getNotesByUserID().observe(getViewLifecycleOwner(), notes -> {
+            requireActivity().runOnUiThread(() -> {
+                if (notes != null && notes.size() > 0) {
+                    MList = noteToCard(notes);
+                    InitEvent();
+                    noteAlert.setText(getString(R.string.note_alert, MList.size() + ""));
+                    no_note.setVisibility(View.GONE);
+                } else {
+                    // 只有当本地和网络都没有数据时才显示
+                    if (MList == null || MList.isEmpty()) {
+                        no_note.setVisibility(View.VISIBLE);
+                    } else {
+                        no_note.setVisibility(View.GONE);
+                    }
+                }
+            });
+        });
+
         floatButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
                 fragmentManager = getFragmentManager();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                 fragmentTransaction.replace(R.id.fragment, AddNoteFragment.class, null).addToBackStack(null).commit();
             }
         });
-        // 初始化 ViewModel
-        viewModel = new ViewModelProvider(this).get(MyViewModel.class);
-
-        // 观察 LiveData
-        viewModel.getNotesByUserID().observe(getViewLifecycleOwner(), notes -> {
-            if (notes != null && notes.size() > 0) {
-                MList = noteToCard(notes);
-                InitEvent();
-                noteAlert.setText(getString(R.string.note_alert, MList.size() + ""));
-            } else {
-                no_note.setVisibility(View.VISIBLE);
-            }
-        });
-
-
     }
 
     private ArrayList<NoteCard> noteToCard(List<NoteEntity> localNote) {

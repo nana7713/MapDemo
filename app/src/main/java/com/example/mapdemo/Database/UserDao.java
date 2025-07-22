@@ -29,4 +29,6 @@ public interface UserDao {
 
     @Delete
     void delete(User user);
+    @Query("SELECT * FROM users WHERE account = :account")
+    User getUserByAccount(String account);
 }

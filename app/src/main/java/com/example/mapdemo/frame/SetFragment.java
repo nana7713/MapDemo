@@ -211,7 +211,55 @@ public class SetFragment extends Fragment {
                 });
 
                 Toast.makeText(getActivity(),"保存成功！",Toast.LENGTH_LONG).show();
+                // 新增：同步更新本地数据库并刷新输入框
+                new Thread(() -> {
+                    userDao.updateUser(user);
+                    User updated = userDao.findById(user.getUid());
+                    if (updated != null && getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (updated.getName() != null) Eusername.setText(updated.getName());
+                            if (updated.getPlace() != null) Eplace.setText(updated.getPlace());
+                            if (updated.getAge() != null) Eage.setText(updated.getAge());
+                            if (updated.getSlogan() != null) Eslogan.setText(updated.getSlogan());
+                            if (updated.getGender() != null) {
+                                if (updated.getGender().equals("男")) male.setChecked(true);
+                                else if (updated.getGender().equals("女")) female.setChecked(true);
+                            }
+                            if (updated.getAvatar() != null && !updated.getAvatar().isEmpty()) {
+                                Glide.with(getActivity()).load(updated.getAvatar()).into(avatar);
+                                avatarUri = updated.getAvatar();
+                            }
+                            // 保存成功后跳转回我的页面
+                            FragmentManager fragmentManager = getParentFragmentManager();
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                            fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
+                        });
+                    }
+                }).start();
             }
         });
+        // 打开页面时回显用户信息
+        new Thread(() -> {
+            User localUser = userDao.findById(MapApp.getUserID());
+            if (localUser != null && getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    user = localUser;
+                    if (user.getName() != null) Eusername.setText(user.getName());
+                    if (user.getPlace() != null) Eplace.setText(user.getPlace());
+                    if (user.getAge() != null) Eage.setText(user.getAge());
+                    if (user.getSlogan() != null) Eslogan.setText(user.getSlogan());
+                    if (user.getGender() != null) {
+                        if (user.getGender().equals("男")) male.setChecked(true);
+                        else if (user.getGender().equals("女")) female.setChecked(true);
+                    }
+                    if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
+                        Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
+                        avatarUri = user.getAvatar();
+                    }
+                    save.setEnabled(true);
+                });
+            }
+        }).start();
     }
 }

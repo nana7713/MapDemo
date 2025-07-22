@@ -11,4 +11,26 @@
     <color name="selected">#90CAF9</color>
     <color name="blue">#64B5F6</color>
     <color name="yellow">#FFD54F</color>
+    <!-- 主色和辅助色 -->
+    <color name="colorPrimary">#6200EE</color>        <!-- Material 紫色 500 -->
+    <color name="colorPrimaryDark">#3700B3</color>    <!-- 深紫色 -->
+    <color name="colorSecondary">#03DAC6</color>      <!-- Material 青色 -->
+
+    <!-- 文字颜色 -->
+    <color name="primary_text">#000000</color>        <!-- 主文本（深色） -->
+    <color name="secondary_text">#757575</color>      <!-- 副文本（灰色） -->
+    <color name="text_on_primary">#FFFFFF</color>     <!-- 主色上的文字（白色） -->
+
+    <!-- 背景色 -->
+    <color name="background_light">#FAFAFA</color>    <!-- 浅灰背景 -->
+    <color name="background_card">#FFFFFF</color>     <!-- 卡片背景（白色） -->
+
+    <!-- 灰色调 -->
+    <color name="gray_light">#E0E0E0</color>          <!-- 输入框背景（浅灰） -->
+    <color name="gray_medium">#9E9E9E</color>         <!-- 图标默认色 -->
+    <color name="gray_dark">#424242</color>           <!-- 深灰文本 -->
+
+    <!-- 状态色 -->
+    <color name="error_red">#B00020</color>           <!-- 错误提示红色 -->
+    <color name="success_green">#4CAF50</color>       <!-- 成功提示绿色 -->
 </resources>
