@@ -14,6 +14,7 @@ public class Comment {
     private long timestamp;//评论的时间戳
     private int user_id;
     private List<Comment> replies=new ArrayList<>();
+    private String avatar; // 新增头像字段
     public static Comment fromEntity(CommentInfo commentInfo,String username){
         Comment comment=new Comment();
         comment.setCommentId(commentInfo.getComment_id());
@@ -21,6 +22,7 @@ public class Comment {
         comment.setUsername(username);
         comment.setTimestamp(commentInfo.getTimestamp());
         comment.setUser_id(commentInfo.getUser_id()); // 新增
+        comment.setAvatar(commentInfo.getAvatar()); // 新增
         return comment;
     }
     public static Comment buildHierarchy(//
@@ -83,5 +85,12 @@ public class Comment {
     }
     public void setUser_id(int user_id) {
         this.user_id = user_id;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 }

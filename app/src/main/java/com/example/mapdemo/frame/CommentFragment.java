@@ -179,6 +179,12 @@ public class CommentFragment extends Fragment {
             // 1. 创建数据库实体CommentInfo
             CommentInfo newComment = new CommentInfo(noteId, content, userId);
             newComment.setUsername(getCurrentUserName()); // 设置用户名
+            // 新增：设置头像字段，保证一级评论也有头像
+            UserDao userDao = MapApp.getAppDb().userDao();
+            User user = userDao.findById(userId);
+            if (user != null) {
+                newComment.setAvatar(user.getAvatar());
+            }
 
             // 2. 保存到数据库
             commentDao.insertComment(newComment);

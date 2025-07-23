@@ -322,6 +322,8 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
                 } else {
                     comment.setUsername("未知用户");
                 }
+                // 新增：设置头像字段
+                comment.setAvatar(user.getAvatar());
 
                 try {
                     // 插入评论

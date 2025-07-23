@@ -34,6 +34,7 @@ public class CommentInfo {
     private Long parentcomment_id;//父评论的id
     private boolean isSynced;//是否同步到服务器
     private String comment_content;//评论的内容
+    private String avatar; // 新增头像字段
     public CommentInfo()
     {
 
@@ -103,6 +104,13 @@ public class CommentInfo {
     }
     public void setComment_content(String comment_content) {
         this.comment_content = comment_content;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     @Override

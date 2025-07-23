@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
@@ -48,6 +49,21 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Comment comment = comments.get(position);
+        // 加载头像
+        if (comment.getAvatar() != null && !comment.getAvatar().isEmpty()) {
+            // 如果有Glide依赖，优先用Glide加载网络图片
+            try {
+                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                        .load(comment.getAvatar())
+                        .placeholder(R.drawable.default_avatar)
+                        .error(R.drawable.default_avatar)
+                        .into(holder.ivAvatar);
+            } catch (Exception e) {
+                holder.ivAvatar.setImageResource(R.drawable.default_avatar);
+            }
+        } else {
+            holder.ivAvatar.setImageResource(R.drawable.default_avatar);
+        }
         // 确保同时设置用户名和内容
         holder.tvUserName.setText(comment.getUsername() + ":");
         holder.tvContent.setText(comment.getContent());
@@ -183,6 +199,10 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
                     if (onCommentChanged != null) {
                         onCommentChanged.run();
                     }
+                    // 新增：强制刷新评论数量
+                    if (myAdapter != null) {
+                        myAdapter.refreshCommentCountOnMainThread(noteId);
+                    }
                 });
             }).start();
         });
@@ -217,6 +237,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
         TextView tvUserName, tvContent;
         RecyclerView rvReplies;
         android.widget.ImageButton btnDelete;
+        ImageView ivAvatar;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -224,7 +245,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
             tvContent = itemView.findViewById(R.id.tv_content);
             rvReplies = itemView.findViewById(R.id.rv_replies);
             btnDelete = itemView.findViewById(R.id.btn_delete_comment);
-            
+            ivAvatar = itemView.findViewById(R.id.iv_avatar);
             // LayoutManager只应被创建一次
             rvReplies.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
             rvReplies.setNestedScrollingEnabled(false);
@@ -316,7 +337,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
         }
     }
 
-    private void showReplyBottomSheet(Context context, long parentCommentId) {
+    private void showReplyBottomSheet(Context context, Long parentCommentId) {
         android.app.Activity activity = (android.app.Activity) context;
         com.google.android.material.bottomsheet.BottomSheetDialog bottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(activity);
         View dialogView = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_comments, null);
@@ -339,9 +360,15 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
                 reply.setUser_id(userId);
                 reply.setComment_content(content);
                 reply.setTimestamp(System.currentTimeMillis());
-                reply.setParentcomment_id(parentCommentId);
+                // 修正parentcomment_id赋值，防止为0导致孤儿评论
+                if (parentCommentId != null && parentCommentId != 0) {
+                    reply.setParentcomment_id(parentCommentId);
+                } else {
+                    reply.setParentcomment_id(null);
+                }
                 reply.setSynced(false);
                 reply.setUsername(user.getName() != null && !user.getName().isEmpty() ? user.getName() : user.getAccount());
+                reply.setAvatar(user.getAvatar()); // 新增：设置头像字段
                 db.commentDao().insertComment(reply);
 //                // 重新查询并刷新评论树
 //                List<com.example.mapdemo.Database.CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
