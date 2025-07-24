@@ -1,49 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="8dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
     android:background="@android:color/white">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_height="wrap_content">
+
         <ImageView
             android:id="@+id/iv_avatar"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:src="@drawable/default_avatar"
             android:scaleType="centerCrop"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_avatar_circle"/>
+            android:background="@drawable/bg_avatar_circle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
         <TextView
             android:id="@+id/tv_user_name"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textColor="@color/primary_text"
             android:textSize="14sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            app:layout_constraintStart_toEndOf="@id/iv_avatar"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginStart="8dp"/>
+
+        <TextView
+            android:id="@+id/tv_content"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textColor="@color/secondary_text"
+            app:layout_constraintStart_toStartOf="@id/tv_user_name"
+            app:layout_constraintTop_toBottomOf="@id/tv_user_name"
+            app:layout_constraintEnd_toStartOf="@id/btn_delete_comment"
+            android:layout_marginTop="2dp"/>
+
         <ImageButton
             android:id="@+id/btn_delete_comment"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="@android:color/transparent"
             android:src="@android:drawable/ic_menu_delete"
-            android:contentDescription="删除评论"/>
-    </LinearLayout>
-
-    <!-- 评论内容 -->
-    <TextView
-        android:id="@+id/tv_content"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:textSize="16sp"
-        android:textColor="@color/secondary_text"/>
+            android:contentDescription="删除评论"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- 嵌套的子回复列表 -->
     <androidx.recyclerview.widget.RecyclerView
@@ -55,7 +67,5 @@
         android:clipToPadding="false"
         android:nestedScrollingEnabled="false"
         android:visibility="gone"
-        android:overScrollMode="never"
-        />
-
+        android:overScrollMode="never"/>
 </LinearLayout>
