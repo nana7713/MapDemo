@@ -162,199 +162,62 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         }).start();
     }
     private void showCommentsBottomSheet(long noteId) {
-        // 在这里实现显示评论的逻辑
-        // 可以使用 BottomSheetDialog 或其他方式来显示评论
-        Toast.makeText(context, "评论", Toast.LENGTH_SHORT).show();
-        // 0. 获取有效的 Context（确保是 Activity 上下文）
         if (context == null || !(context instanceof Activity)) {
-            return; // 防止空指针或非 Activity 上下文
+            return;
         }
         Activity activity = (Activity) context;
-
-        // 1. 创建弹窗实例
         BottomSheetDialog bottomSheet = new BottomSheetDialog(activity);
-
-        // 2. 加载弹窗布局
         View dialogView = LayoutInflater.from(activity)
                 .inflate(R.layout.bottom_sheet_comments, null);
         bottomSheet.setContentView(dialogView);
-        // 3. 初始化弹窗内的组件
         RecyclerView rvComments = dialogView.findViewById(R.id.rv_comment);
         EditText etInput = dialogView.findViewById(R.id.et_comment_input);
         Button btnSend = dialogView.findViewById(R.id.btn_send);
-        // 4. 配置 RecyclerView
         rvComments.setLayoutManager(new LinearLayoutManager(activity));
-        // 新版CommentsAdapter构造，支持子回复
-        CommentsAdapter commentsAdapter = new CommentsAdapter(
-                new ArrayList<>(),
-                noteId,
-                (entities, userDao) -> {
-                    Map<Long, List<CommentInfo>> repliesMap = new HashMap<>();
-                    Map<Integer, String> userIdToName = new HashMap<>();
-                    List<User> users = userDao.getAll();
-                    for (User user : users) {
-                        userIdToName.put(user.getUid(), user.getName());
-                    }
-                    for (CommentInfo entity : entities) {
-                        Long parentId = entity.getParentcomment_id();
-                        if (parentId != null) {
-                            repliesMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(entity);
-                        }
-                    }
-                    List<Comment> rootComments = new ArrayList<>();
-                    for (CommentInfo entity : entities) {
-                        if (entity.getParentcomment_id() == null) {
-                            String userName = entity.getUsername();
-                            if (userName == null || userName.isEmpty()) {
-                                userName = userIdToName.getOrDefault(entity.getUser_id(), "未知用户");
-                            }
-                            Comment comment = Comment.buildHierarchy(entity, userName, repliesMap, userIdToName);
-                            rootComments.add(comment);
-                        }
-                    }
-                    return rootComments;
-                },
-                () -> refreshCommentCountOnMainThread(noteId),
-                this // 传递MyAdapter实例
-        );
-        rvComments.setAdapter(commentsAdapter);
-        // 5. 加载评论数据（异步操作）
+        // 加载评论内容
         new Thread(() -> {
-            // 获取数据库实例
-            AppDatabase db = Room.databaseBuilder(activity, AppDatabase.class, "app_db").build();
-
-            // 查询当前笔记的评论（包含层级结构）
-            List<CommentInfo> entities = db.commentDao().getCommentsByPostId(noteId);
-            List<Comment> comments = buildCommentHierarchy(entities, db.userDao());
-
-            // 切换到主线程更新 UI
+            AppDatabase db = MapApp.getAppDb();
+            List<CommentInfo> commentInfos = db.commentDao().getCommentsByPostId(noteId);
+            List<Comment> comments = buildCommentHierarchy(commentInfos, db.userDao());
             activity.runOnUiThread(() -> {
-                commentsAdapter.updateComments(comments);
+                CommentsAdapter adapter = new CommentsAdapter(
+                        comments,
+                        noteId,
+                        this::buildCommentHierarchy,
+                        () -> refreshCommentCountOnMainThread(noteId),
+                        this
+                );
+                rvComments.setAdapter(adapter);
             });
         }).start();
-        // 6. 发送评论逻辑
         btnSend.setOnClickListener(v -> {
             String content = etInput.getText().toString().trim();
-            if (content.isEmpty()) {
-                return;
-            }
-            int userId = getCurrentUserId();
-            // 验证用户是否有效
-            if (userId <= 0) {
-                Toast.makeText(context, "请先登录再评论", Toast.LENGTH_SHORT).show();
-                return;
-            }
-//            new Thread(() -> {
-//
-//                // 创建评论对象
-//                CommentInfo comment = new CommentInfo();
-//                comment.setPost_id(noteId);
-//                int userId = getCurrentUserId();
-//                comment.setUser_id(userId); // 需实现获取当前用户ID的逻辑
-//                comment.setComment_content(content);
-//                comment.setTimestamp(System.currentTimeMillis());
-//                comment.setParentcomment_id(null); // 默认顶级评论
-//                comment.setSynced(false);
-//
-//                // 插入本地数据库前校验外键
-//                AppDatabase db = Room.databaseBuilder(activity, AppDatabase.class, "app_db").build();
-//                User user = db.userDao().findById(userId);
-//                NoteEntity note = db.noteDao().findById(noteId);
-//                if (userId <= 0 || user == null) {
-//                    activity.runOnUiThread(() ->
-//                        Toast.makeText(context, "请先登录再评论", Toast.LENGTH_SHORT).show()
-//                    );
-//                    return;
-//                }
-//                if (noteId <= 0 || note == null) {
-//                    activity.runOnUiThread(() ->
-//                        Toast.makeText(context, "笔记不存在，无法评论", Toast.LENGTH_SHORT).show()
-//                    );
-//                    return;
-//                }
-//                long commentId = db.commentDao().insertComment(comment);
-//
-//                // 刷新评论列表
-//                List<CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
-//                List<Comment> newComments = buildCommentHierarchy(newEntities, db.userDao());
-//
-//                // 更新 UI
-//                activity.runOnUiThread(() -> {
-//                    commentsAdapter.updateComments(newComments);
-//                    etInput.setText("");
-//                });
-//            }).start();
+            if (content.isEmpty()) return;
+            int userId = MapApp.getUserID();
             new Thread(() -> {
-                // 使用全局数据库实例
                 AppDatabase db = MapApp.getAppDb();
-
-                // 验证用户是否存在
                 User user = db.userDao().findById(userId);
-                if (user == null) {
-                    activity.runOnUiThread(() ->
-                            Toast.makeText(context, "用户信息无效，请重新登录", Toast.LENGTH_SHORT).show()
+                if (user == null) return;
+                CommentInfo newComment = new CommentInfo(noteId, content, userId);
+                newComment.setUsername(user.getName() != null && !user.getName().isEmpty() ? user.getName() : user.getAccount());
+                newComment.setAvatar(user.getAvatar()); // 关键：插入时赋值avatar
+                db.commentDao().insertComment(newComment);
+                List<CommentInfo> commentInfos = db.commentDao().getCommentsByPostId(noteId);
+                List<Comment> comments = buildCommentHierarchy(commentInfos, db.userDao());
+                activity.runOnUiThread(() -> {
+                    CommentsAdapter adapter = new CommentsAdapter(
+                            comments,
+                            noteId,
+                            this::buildCommentHierarchy,
+                            ()-> refreshCommentCountOnMainThread(noteId),
+                            this
                     );
-                    return;
-                }
-
-                // 验证笔记是否存在
-                NoteEntity note = db.noteDao().findById(noteId);
-                if (note == null) {
-                    activity.runOnUiThread(() ->
-                            Toast.makeText(context, "笔记不存在，无法评论", Toast.LENGTH_SHORT).show()
-                    );
-                    return;
-                }
-
-                // 创建评论对象
-                CommentInfo comment = new CommentInfo();
-                comment.setPost_id(noteId);
-                comment.setUser_id(userId);
-                comment.setComment_content(content);
-                comment.setTimestamp(System.currentTimeMillis());
-                comment.setParentcomment_id(null);
-                comment.setSynced(false);
-                // 修正：优先写入用户昵称，否则写入账号
-                if (user.getName() != null && !user.getName().isEmpty()) {
-                    comment.setUsername(user.getName());
-                } else if (user.getAccount() != null) {
-                    comment.setUsername(user.getAccount());
-                } else {
-                    comment.setUsername("未知用户");
-                }
-                // 新增：设置头像字段
-                comment.setAvatar(user.getAvatar());
-
-                try {
-                    // 插入评论
-                    db.commentDao().insertComment(comment);
-
-                    // 刷新评论列表
-                    List<CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
-                    List<Comment> newComments = buildCommentHierarchy(newEntities, db.userDao());
-
-                    // 更新UI
-                    activity.runOnUiThread(() -> {
-                        commentsAdapter.updateComments(newComments);
-                        etInput.setText("");
-                        // 新增：刷新评论数量
-                        for (int i = 0; i < Mlist.size(); i++) {
-                            if (Mlist.get(i).getCardID() == noteId) {
-                                notifyItemChanged(i);
-                                break;
-                            }
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e("Comment", "评论失败", e);
-                    activity.runOnUiThread(() ->
-                            Toast.makeText(context, "评论失败：" + e.getMessage(), Toast.LENGTH_SHORT).show()
-                    );
-                }
+                    rvComments.setAdapter(adapter);
+                    etInput.setText("");
+                    refreshCommentCountOnMainThread(noteId); // 新增：实时刷新评论数量
+                });
             }).start();
         });
-
-        // 7. 显示弹窗
         bottomSheet.show();
     }
     // Helper 方法：构建层级评论结构
