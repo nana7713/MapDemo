@@ -1,5 +1,7 @@
 package com.example.mapdemo.Adapter;
 
+import static com.google.android.material.internal.ContextUtils.getActivity;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -111,20 +113,32 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
         holder.delete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new AlertDialog.Builder(context).setTitle("是否确定删除？").setPositiveButton("yes", (dialogInterface, i) -> {
-                    delete_position=holder.getLayoutPosition();//手动获取最新position
-                    deleteNote();
+                if (MapApp.getUserID()==Mlist.get(position).getUser_id()){
+                    new AlertDialog.Builder(context).setTitle("是否确定删除？").setPositiveButton("yes", (dialogInterface, i) -> {
+                        delete_position=holder.getLayoutPosition();//手动获取最新position
+                        deleteNote();
 
-                }).setNegativeButton("no", (dialogInterface, i) -> {
+                    }).setNegativeButton("no", (dialogInterface, i) -> {
 
-                }).show();
+                    }).show();
+                }
+                else{
+                    Toast.makeText(context, "您没有删除此笔记的权限！", Toast.LENGTH_LONG).show();
+                }
+
             }
         });
         holder.itemCard.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 long id=Mlist.get(position).getId();
-                fragmentHelper.Helper(holder.title.getText().toString(),holder.content.getText().toString(),id);
+                if (MapApp.getUserID()==Mlist.get(position).getUser_id()){
+                    fragmentHelper.Helper(holder.title.getText().toString(),holder.content.getText().toString(),id);
+                }
+                else{
+                    Toast.makeText(context, "您没有编辑此笔记的权限！", Toast.LENGTH_LONG).show();
+                }
+
             }
         });
     }
