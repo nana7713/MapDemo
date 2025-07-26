@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.text.TextUtils;
 import android.util.Log;
@@ -57,10 +58,13 @@ import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.map.PoiTagType;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.model.LatLngBounds;
+import com.baidu.mapapi.search.core.PoiDetailInfo;
 import com.baidu.mapapi.search.core.PoiInfo;
+import com.baidu.mapapi.search.core.SearchResult;
 import com.baidu.mapapi.search.poi.OnGetPoiSearchResultListener;
 import com.baidu.mapapi.search.poi.PoiCitySearchOption;
 import com.baidu.mapapi.search.poi.PoiDetailResult;
+import com.baidu.mapapi.search.poi.PoiDetailSearchOption;
 import com.baidu.mapapi.search.poi.PoiDetailSearchResult;
 import com.baidu.mapapi.search.poi.PoiIndoorResult;
 import com.baidu.mapapi.search.poi.PoiResult;
@@ -74,10 +78,12 @@ import com.example.mapdemo.MyItem;
 import com.example.mapdemo.PoiAdapter;
 import com.example.mapdemo.PoiOverlay;
 import com.example.mapdemo.R;
+import com.example.mapdemo.ViewModel.MyViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 
 public class MapFragment extends Fragment  {
@@ -102,6 +108,7 @@ public class MapFragment extends Fragment  {
     ListView listView;
     TextView textV;
     String type="public";
+    private PoiSearch mMarkPoiSearch;
 
 
 
@@ -157,6 +164,31 @@ public class MapFragment extends Fragment  {
         mMapView = view.findViewById(R.id.bmapView);
         if (getArguments()!=null)
         type=getArguments().getString("type");
+        mMarkPoiSearch=PoiSearch.newInstance();
+        mMarkPoiSearch.setOnGetPoiSearchResultListener(new OnGetPoiSearchResultListener() {
+            @Override
+            public void onGetPoiResult(PoiResult result) {
+            }
+
+            @Override
+            public void onGetPoiDetailResult(PoiDetailResult poiDetailResult) {
+
+            }
+
+            @Override
+            public void onGetPoiDetailResult(PoiDetailSearchResult result) {
+                if (result.error == SearchResult.ERRORNO.NO_ERROR) {
+                    PoiDetailInfo poiInfo = result.getPoiDetailInfoList().get(0);
+                    addMarkerForPoi(poiInfo); // 直接添加标记
+                }
+
+            }
+
+            @Override
+            public void onGetPoiIndoorResult(PoiIndoorResult poiIndoorResult) {
+
+            }
+        });
 
 
 
@@ -338,12 +370,17 @@ public class MapFragment extends Fragment  {
        //如果是个人地图，显示缩略图
         if (Objects.equals(type, "private")) {
             mBaiduMap.setPoiTagEnable(PoiTagType.All, false);
-            noteList = getLocalNote();
+            noteList=getLocalNote();
             if (noteList != null) {
                 addNotesToMap();
             }
         }
+        getAllNote(notes->{
+            if (notes!=null){
+                showPoiTag(notes);
+            }
 
+        });
     }
     BaiduMap.OnMapClickListener listener = new BaiduMap.OnMapClickListener() {
         /**
@@ -376,7 +413,46 @@ public class MapFragment extends Fragment  {
 
         }
     };
+    private void getAllNote(Consumer<List<NoteEntity>> callback) {
+        NoteDao noteDao = MapApp.getAppDb().noteDao();
+        MyViewModel viewModel = new ViewModelProvider(MapFragment.this).get(MyViewModel.class);
 
+        viewModel.getAllNotes().observe(getViewLifecycleOwner(), notes -> {
+
+            if (notes != null && notes.size() > 0) {
+                callback.accept(notes);
+            } else {
+                callback.accept(noteDao.findByUserID(MapApp.getUserID()));
+            }
+
+        });
+    }
+    private void showPoiTag(List<NoteEntity> notes){
+
+        for (int i=0;i<notes.size();i++){
+            NoteEntity note=notes.get(i);
+            String poiID=note.getPoi_id();
+
+            mMarkPoiSearch.searchPoiDetail(new PoiDetailSearchOption()
+                    .poiUids(poiID));
+        }
+
+    }
+
+    private void addMarkerForPoi(PoiDetailInfo poiInfo) {
+        // 创建标记图标
+        BitmapDescriptor icon = BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding);
+
+        // 构建MarkerOptions
+        MarkerOptions options = new MarkerOptions()
+                .position(poiInfo.getLocation()) // POI坐标
+                .icon(icon)
+                .title(poiInfo.getName()) // POI名称
+                .zIndex(15); // 设置层级
+
+        // 添加标记到地图
+        Marker marker = (Marker) mBaiduMap.addOverlay(options);
+    }
 
 
     private List<NoteEntity> getLocalNote() {
@@ -755,6 +831,7 @@ public class MapFragment extends Fragment  {
         mMapView.onDestroy();
         mBaiduMap.setMyLocationEnabled(false);//禁用定位图层
         mlocationClient.stop();
+
     }
 
     @Override
