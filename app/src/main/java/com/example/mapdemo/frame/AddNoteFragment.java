@@ -424,6 +424,7 @@ public class AddNoteFragment extends Fragment {
                         if (user == null) {
                             throw new IllegalArgumentException("User ID " + newNote.user_id + " 不存在！");
                         }
+                        noteDao.insertAll(newNote);
 
 
                         // 创建 Retrofit 服务实例
@@ -550,7 +551,7 @@ public class AddNoteFragment extends Fragment {
                             });
 
                         }
-                        noteDao.updateNote(noteEntity);
+                        noteDao.insertAll(noteEntity);
 
 
                         // 调用上传笔记的方法

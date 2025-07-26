@@ -10,6 +10,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -33,6 +34,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         initView();
         initEvent();
+        showNoticeDialog();
+
 
     }
     /**
@@ -138,5 +141,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+    }
+    // 在Activity的onCreate()中调用
+    private void showNoticeDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("用户须知")
+                .setMessage("    左下角分别为切换地图和重新定位按钮\n" +
+                        "    切换地图是指切换为显示登录用户笔记缩略图的形式\n" +
+                        "    点击poi点(地图上的文字)可以添加笔记,有红色标记的poi点存有笔记\n"+
+                        "    缩略图暂时只显示在“我的笔记”添加的笔记，不支持poi点笔记\n"
+                )
+                .setPositiveButton("我知道了", (dialog, which) -> {
+                    // 点击确认后操作
+                    dialog.dismiss();
+                })
+                .setCancelable(false) // 禁止点击外部关闭
+                .show();
     }
 }

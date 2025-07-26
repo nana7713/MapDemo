@@ -16,7 +16,7 @@ public interface NoteDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     long[] insertAll(NoteEntity... noteEntities);
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     long insert(NoteEntity noteEntity);
 
     @Update
