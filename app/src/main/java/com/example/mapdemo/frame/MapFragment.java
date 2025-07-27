@@ -8,6 +8,7 @@ import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
@@ -71,6 +72,11 @@ import com.baidu.mapapi.search.poi.PoiResult;
 import com.baidu.mapapi.search.poi.PoiSearch;
 import com.baidu.mapapi.utils.CoordinateConverter;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.MapApp;
@@ -474,7 +480,7 @@ public class MapFragment extends Fragment  {
 
     //将笔记添加到地图上
     private void addNotesToMap() {
-
+        mClusterManager.clearItems();
         List<MyItem> items = new ArrayList<>();
         for (NoteEntity note : noteList) {
             if (!Objects.equals(note.getPoi_id(), "0")) continue;
@@ -558,25 +564,29 @@ public class MapFragment extends Fragment  {
      */
     private void loadNoteIconAsync(NoteEntity note, Marker marker, MyItem item) {
         String imgUrl = note.getNote_image_uri();
-        if (imgUrl == null || imgUrl.trim().isEmpty()) return;   // 无图直接保留默认图标
+        if (TextUtils.isEmpty(imgUrl)) return;
 
-        AsyncTask.execute(() -> {
-            try {
-                Bitmap bmp = Glide.with(requireContext())
-                        .asBitmap()
-                        .load(imgUrl)
-                        .submit(100, 100)   // 输出 100×100
-                        .get();
-                BitmapDescriptor realIcon = BitmapDescriptorFactory.fromBitmap(bmp);
+        // 使用 Glide 的 BitmapPool 复用内存
+        Glide.with(requireContext())
+                .asBitmap()
+                .load(imgUrl)
+                .apply(new RequestOptions()
+                        .override(100, 100)
+                        .format(DecodeFormat.PREFER_RGB_565) // 减少内存占用
+                        .diskCacheStrategy(DiskCacheStrategy.ALL))
+                .into(new CustomTarget<Bitmap>() {
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap bitmap, @Nullable Transition<? super Bitmap> transition) {
+                        BitmapDescriptor descriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
+                        marker.setIcon(descriptor);
+                        item.setBitmapDescriptor(descriptor);
+                    }
 
-                // 回到主线程更新图标
-                requireActivity().runOnUiThread(() -> {marker.setIcon(realIcon);
-                item.setBitmapDescriptor(realIcon);});
-            } catch (Exception e) {
-                // 加载失败仍保持默认图标
-                e.printStackTrace();
-            }
-        });
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 清理资源时回调
+                    }
+                });
     }
 
     private Bitmap resizeBitmap(Bitmap originalBitmap, int newWidth, int newHeight) {
@@ -825,12 +835,20 @@ public class MapFragment extends Fragment  {
     }
 
 
+
     @Override
     public void onDestroy() {
-        super.onDestroy();
-        mMapView.onDestroy();
+
+        // 释放 Bitmap 资源
+        if (mClusterManager != null) {
+            mClusterManager.clearItems();
+        }
+        // 移除地图监听
+        mBaiduMap.setOnMapStatusChangeListener(null);
         mBaiduMap.setMyLocationEnabled(false);//禁用定位图层
         mlocationClient.stop();
+        mMapView.onDestroy();
+        super.onDestroy();
 
     }
 

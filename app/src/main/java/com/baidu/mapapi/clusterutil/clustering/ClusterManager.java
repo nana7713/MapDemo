@@ -7,6 +7,8 @@ package com.baidu.mapapi.clusterutil.clustering;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.baidu.mapapi.clusterutil.MarkerManager;
 import com.baidu.mapapi.clusterutil.clustering.algo.Algorithm;
@@ -48,6 +50,11 @@ public class ClusterManager<T extends ClusterItem> implements
     private OnClusterInfoWindowClickListener<T> mOnClusterInfoWindowClickListener;
     private OnClusterItemInfoWindowClickListener<T> mOnClusterItemInfoWindowClickListener;
     private OnClusterClickListener<T> mOnClusterClickListener;
+    // 在类成员变量区添加
+    private long mLastClusterTime = 0L;
+    private static final long CLUSTER_DEBOUNCE_DELAY_MS = 300L; // 防抖延迟300ms
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private Runnable mClusterRunnable;
 
     public ClusterManager(Context context, BaiduMap map) {
         this(context, map, new MarkerManager(map));
@@ -190,6 +197,24 @@ public class ClusterManager<T extends ClusterItem> implements
 
     @Override
     public void onMapStatusChangeFinish(MapStatus mapStatus) {
+        // 取消之前未执行的聚类任务
+        if (mClusterRunnable != null) {
+            mHandler.removeCallbacks(mClusterRunnable);
+        }
+
+        // 创建新的延迟任务
+        mClusterRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (System.currentTimeMillis() - mLastClusterTime > CLUSTER_DEBOUNCE_DELAY_MS) {
+                    cluster();
+                    mLastClusterTime = System.currentTimeMillis();
+                }
+            }
+        };
+
+        mHandler.postDelayed(mClusterRunnable, CLUSTER_DEBOUNCE_DELAY_MS);
+
 
     }
 
@@ -197,6 +222,7 @@ public class ClusterManager<T extends ClusterItem> implements
     public boolean onMarkerClick(Marker marker) {
         return getMarkerManager().onMarkerClick(marker);
     }
+
 
     /**
      * Runs the clustering algorithm in a background thread, then re-paints when results come back.
