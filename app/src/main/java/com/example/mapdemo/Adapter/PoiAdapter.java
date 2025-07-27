@@ -25,6 +25,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Bean.NoteCard;
 import com.example.mapdemo.Database.NoteDao;
@@ -80,7 +81,7 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
         holder.slogan.setText(Mlist.get(position).getSlogan());
         holder.title.setText(Mlist.get(position).getTitle());
         holder.content.setText(Mlist.get(position).getContent());
-        Glide.with(context).load(Mlist.get(position).getAvatar_uri()).into(holder.avatar);
+        Glide.with(holder.itemView.getContext()).load(Mlist.get(position).getAvatar_uri()).thumbnail(0.1f).diskCacheStrategy(DiskCacheStrategy.ALL).into(holder.avatar);
         //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
 //        InputStream inputStream= null;
 //        try {

@@ -324,6 +324,7 @@ public class DefaultClusterRenderer<T extends ClusterItem> implements
 
         @SuppressLint("NewApi")
         public void run() {
+            final boolean SHOULD_ANIMATE = false;
             if (clusters.equals(DefaultClusterRenderer.this.mClusters)) {
                 mCallback.run();
                 return;
@@ -551,11 +552,12 @@ public class DefaultClusterRenderer<T extends ClusterItem> implements
          * @param to     the position to animate to.
          */
         public void animateThenRemove(MarkerWithPosition marker, LatLng from, LatLng to) {
-            lock.lock();
+            /*lock.lock();
             AnimationTask animationTask = new AnimationTask(marker, from, to);
             animationTask.removeOnAnimationComplete(mClusterManager.getMarkerManager());
             mAnimationTasks.add(animationTask);
-            lock.unlock();
+            lock.unlock();*/
+            removeMarker(marker.marker);
         }
 
         @Override
