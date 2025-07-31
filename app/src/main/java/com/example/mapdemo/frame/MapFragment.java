@@ -85,6 +85,7 @@ import com.example.mapdemo.PoiAdapter;
 import com.example.mapdemo.PoiOverlay;
 import com.example.mapdemo.R;
 import com.example.mapdemo.ViewModel.MyViewModel;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -115,6 +116,8 @@ public class MapFragment extends Fragment  {
     TextView textV;
     String type="public";
     private PoiSearch mMarkPoiSearch;
+    private FloatingActionButton floatButton;
+    private FragmentManager fragmentManager;
 
 
 
@@ -167,6 +170,7 @@ public class MapFragment extends Fragment  {
 //        });
 
         //将在前端的东西与后端建立联系（findViewById）
+        floatButton = view.findViewById(R.id.floating_action_button);
         mMapView = view.findViewById(R.id.bmapView);
         if (getArguments()!=null)
         type=getArguments().getString("type");
@@ -198,7 +202,15 @@ public class MapFragment extends Fragment  {
 
 
 
+        floatButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
 
+                fragmentManager = getFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                fragmentTransaction.replace(R.id.fragment, AddNoteFragment.class, null).addToBackStack(null).commit();
+            }
+        });
         //获取地图实例化
         mBaiduMap = mMapView.getMap();
         //设置地图类型为普通视图
@@ -410,6 +422,8 @@ public class MapFragment extends Fragment  {
 
             bundle.putString("poiName",mapPoi.getName());
             bundle.putString("poiId",mapPoi.getUid());
+            bundle.putString("latitude", String.valueOf(mapPoi.getPosition().latitude));
+            bundle.putString("longitude", String.valueOf(mapPoi.getPosition().longitude));
             PoiFragment poiFragment=new PoiFragment();
             poiFragment.setArguments(bundle);
             FragmentManager fragmentManager = getFragmentManager();
@@ -473,7 +487,7 @@ public class MapFragment extends Fragment  {
         if (allNote.size() > 0) {
             return allNote;
         } else {
-            Log.d(TAG, "getLocalNote: 没有笔记数据");
+            Toast.makeText(getActivity(), "暂无笔记数据", Toast.LENGTH_LONG).show();
             return null;
         }
     }

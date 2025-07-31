@@ -45,6 +45,8 @@ public class PoiFragment extends Fragment {
     private String mParam2;
     private String poiName;
     private String poiId;
+    private String poiLatitude;
+    private String poiLongitude;
     private TextView noteAlert;
     private RecyclerView.Adapter poiAdapter;
     private List<NoteEntity> MList;
@@ -83,6 +85,8 @@ public class PoiFragment extends Fragment {
             mParam2 = getArguments().getString(ARG_PARAM2);
             poiName=getArguments().getString("poiName");
             poiId=getArguments().getString("poiId");
+            poiLatitude=getArguments().getString("latitude");
+            poiLongitude=getArguments().getString("longitude");
         }
     }
 
@@ -118,13 +122,12 @@ public class PoiFragment extends Fragment {
                         Bundle bundle=new Bundle();
                         bundle.putString("title",title);
                         bundle.putString("content",content);
-                        bundle.putBoolean("is_new",false);
                         bundle.putLong("id",id);
-                        AddNoteFragment addNoteFragment=new AddNoteFragment();
-                        addNoteFragment.setArguments(bundle);
-                        fragmentManager = getFragmentManager();
+                        ReadFragment readFragment=new ReadFragment();
+                        readFragment.setArguments(bundle);
+                        FragmentManager fragmentManager = getFragmentManager();
                         FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
-                        fragmentTransaction.replace(R.id.fragment, addNoteFragment,null).addToBackStack(null).commit();
+                        fragmentTransaction.replace(R.id.fragment, readFragment,null).addToBackStack(null).commit();
 
                     }
                 });
@@ -153,6 +156,8 @@ public class PoiFragment extends Fragment {
                 }else{
                     Bundle bundle = new Bundle();
                     bundle.putString("poiId", poiId);
+                    bundle.putString("poiLatitude",poiLatitude);
+                    bundle.putString("poiLongitude",poiLongitude);
 
                     AddNoteFragment addNoteFragment = new AddNoteFragment();
                     addNoteFragment.setArguments(bundle);

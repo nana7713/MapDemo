@@ -22,6 +22,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Bean.NoteCard;
@@ -75,7 +76,7 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         holder.slogan.setText(Mlist.get(position).getUser_slogan());
         holder.title.setText(Mlist.get(position).getNote_title());
         holder.content.setText(Mlist.get(position).getNote_content());
-        Glide.with(holder.itemView.getContext()).load(Mlist.get(position).getUser_avatar()).thumbnail(0.1f).diskCacheStrategy(DiskCacheStrategy.ALL).into(holder.avatar);
+        Glide.with(holder.itemView.getContext()).load(Mlist.get(position).getUser_avatar()).into(holder.avatar);
         //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
 //        InputStream inputStream= null;
 //        try {
@@ -89,6 +90,9 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         if (coverUri != null && !coverUri.isEmpty()) {
             Glide.with(context)
                     .load(Uri.parse(coverUri))
+                    .override(800, 800) // 限制分辨率
+                    .format(DecodeFormat.PREFER_RGB_565) // 内存减半
+                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE) // 只缓存处理后的图
                     .into(holder.cover);
         }
         //holder.cover.setImageBitmap(bitmap);

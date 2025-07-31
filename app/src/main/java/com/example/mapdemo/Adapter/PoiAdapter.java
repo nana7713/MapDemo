@@ -25,6 +25,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Bean.NoteCard;
@@ -81,7 +82,7 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
         holder.slogan.setText(Mlist.get(position).getSlogan());
         holder.title.setText(Mlist.get(position).getTitle());
         holder.content.setText(Mlist.get(position).getContent());
-        Glide.with(holder.itemView.getContext()).load(Mlist.get(position).getAvatar_uri()).thumbnail(0.1f).diskCacheStrategy(DiskCacheStrategy.ALL).into(holder.avatar);
+        Glide.with(holder.itemView.getContext()).load(Mlist.get(position).getAvatar_uri()).into(holder.avatar);
         //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
 //        InputStream inputStream= null;
 //        try {
@@ -104,6 +105,9 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
             }
             Glide.with(context)
                     .load(Uri.parse(coverUri))
+                    .override(800, 800) // 限制分辨率
+                    .format(DecodeFormat.PREFER_RGB_565) // 内存减半
+                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE) // 只缓存处理后的图
                     .into(holder.cover);
         } else {
 
@@ -133,12 +137,13 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
             @Override
             public void onClick(View view) {
                 long id=Mlist.get(position).getId();
-                if (MapApp.getUserID()==Mlist.get(position).getUser_id()){
+                fragmentHelper.Helper(holder.title.getText().toString(),holder.content.getText().toString(),id);
+                /*if (MapApp.getUserID()==Mlist.get(position).getUser_id()){
                     fragmentHelper.Helper(holder.title.getText().toString(),holder.content.getText().toString(),id);
                 }
                 else{
                     Toast.makeText(context, "您没有编辑此笔记的权限！", Toast.LENGTH_LONG).show();
-                }
+                }*/
 
             }
         });

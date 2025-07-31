@@ -104,13 +104,12 @@ public class FindFragment extends Fragment {
                         Bundle bundle=new Bundle();
                         bundle.putString("title",title);
                         bundle.putString("content",content);
-                        bundle.putBoolean("is_new",false);
                         bundle.putLong("id",id);
-                        AddNoteFragment addNoteFragment=new AddNoteFragment();
-                        addNoteFragment.setArguments(bundle);
+                        ReadFragment readFragment=new ReadFragment();
+                        readFragment.setArguments(bundle);
                         FragmentManager fragmentManager = getFragmentManager();
                         FragmentTransaction fragmentTransaction=fragmentManager.beginTransaction();
-                        fragmentTransaction.replace(R.id.fragment, addNoteFragment,null).addToBackStack(null).commit();
+                        fragmentTransaction.replace(R.id.fragment, readFragment,null).addToBackStack(null).commit();
 
                     }
                 });
