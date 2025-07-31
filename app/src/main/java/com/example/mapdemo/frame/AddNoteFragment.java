@@ -106,6 +106,8 @@ public class AddNoteFragment extends Fragment {
     private boolean is_new = true;
     private long id;
     private String poiId;
+    private double poiLatitude;
+    private double poiLongitude;
     ActivityResultLauncher<Intent> pickMedia;
     private double exifLatitude=0.0;
     private double exifLongitude=0.0;
@@ -249,6 +251,8 @@ public class AddNoteFragment extends Fragment {
         if (getArguments() != null&&getArguments().getString("poiId")!=null){
             Toast.makeText(getActivity(),"test",Toast.LENGTH_LONG).show();
             poiId=getArguments().getString("poiId");
+            poiLatitude= Double.parseDouble(getArguments().getString("poiLatitude"));
+            poiLongitude= Double.parseDouble(getArguments().getString("poiLongitude"));
         }
         if (getArguments() != null&&getArguments().getString("content")!=null) {
             Econtent.setText(getArguments().getString("content"));
@@ -408,8 +412,8 @@ public class AddNoteFragment extends Fragment {
                                     noteImageUri,//用户选择图片的uri
                                     save_time,//保存时间
                                     user[0].getAvatar(),//头像
-                                    longitude,
-                                    latitude,
+                                    poiLongitude,
+                                    poiLatitude,
                                     isDirect,
                                     poiId);
                         }
