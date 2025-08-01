@@ -23,6 +23,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mapdemo.ApiService;
+import com.example.mapdemo.Database.NoteDao;
+import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
@@ -128,7 +130,7 @@ public class LoginFragment extends Fragment {
 
                             new Thread(() -> {
                                 List<User> localUsers = userDao.getAll();
-                                for (User user : localUsers) {
+                               for (User user : localUsers) {
                                     userDao.delete(user);
                                 }
 
@@ -137,17 +139,18 @@ public class LoginFragment extends Fragment {
                                 requireActivity().runOnUiThread(() -> verifyCredentials(account, password));
                             }).start();
                         }
-
-
                     }
+
 
                     @Override
                     public void onFailure(Call<List<User>> call, Throwable t) {
                         Log.d("debug", "获取失败");
                         users = userDao.getAll();
+                        verifyCredentials(account, password);
 
                     }
                 });
+
             }
         });
         */
@@ -206,6 +209,24 @@ public class LoginFragment extends Fragment {
                 if (TextUtils.equals(users.get(i).password, password)) {
                     int uid = users.get(i).getUid();
                     MapApp.setUserID(uid); // 保存用户 ID
+                    ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+                    Call<List<NoteEntity>> call = apiService.getNoteByUserID(uid);
+                    call.enqueue(new Callback<List<NoteEntity>>() {
+
+
+                        @Override
+                        public void onResponse(Call<List<NoteEntity>> call, Response<List<NoteEntity>> response) {
+                            if (response.isSuccessful()) {
+                                NoteDao noteDao=MapApp.getAppDb().noteDao();
+                                List<NoteEntity> noteEntities=response.body();
+                                noteDao.insertAll(noteEntities.toArray(new NoteEntity[0]));
+                            }
+                        }
+                        @Override
+                        public void onFailure(Call<List<NoteEntity>> call, Throwable t) {
+                            Log.d("debug", "获取失败");
+                        }
+                    });
                     Toast.makeText(getActivity(), "登录成功！", Toast.LENGTH_LONG).show();
                     fragmentManager = getFragmentManager();
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();

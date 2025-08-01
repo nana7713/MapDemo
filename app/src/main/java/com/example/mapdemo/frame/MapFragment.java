@@ -2,16 +2,15 @@ package com.example.mapdemo.frame;
 
 import static android.content.Context.INPUT_METHOD_SERVICE;
 import static com.baidu.mapapi.map.BaiduMap.MAP_TYPE_NORMAL;
-import static com.baidu.mapapi.map.BaiduMap.MAP_TYPE_SATELLITE;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,6 +19,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.text.TextUtils;
 import android.util.Log;
@@ -59,15 +59,24 @@ import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.map.PoiTagType;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.model.LatLngBounds;
+import com.baidu.mapapi.search.core.PoiDetailInfo;
 import com.baidu.mapapi.search.core.PoiInfo;
+import com.baidu.mapapi.search.core.SearchResult;
 import com.baidu.mapapi.search.poi.OnGetPoiSearchResultListener;
 import com.baidu.mapapi.search.poi.PoiCitySearchOption;
 import com.baidu.mapapi.search.poi.PoiDetailResult;
+import com.baidu.mapapi.search.poi.PoiDetailSearchOption;
 import com.baidu.mapapi.search.poi.PoiDetailSearchResult;
 import com.baidu.mapapi.search.poi.PoiIndoorResult;
 import com.baidu.mapapi.search.poi.PoiResult;
 import com.baidu.mapapi.search.poi.PoiSearch;
 import com.baidu.mapapi.utils.CoordinateConverter;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.MapApp;
@@ -75,12 +84,13 @@ import com.example.mapdemo.MyItem;
 import com.example.mapdemo.PoiAdapter;
 import com.example.mapdemo.PoiOverlay;
 import com.example.mapdemo.R;
+import com.example.mapdemo.ViewModel.MyViewModel;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 
 public class MapFragment extends Fragment  {
@@ -105,6 +115,9 @@ public class MapFragment extends Fragment  {
     ListView listView;
     TextView textV;
     String type="public";
+    private PoiSearch mMarkPoiSearch;
+    private FloatingActionButton floatButton;
+    private FragmentManager fragmentManager;
 
 
 
@@ -157,13 +170,47 @@ public class MapFragment extends Fragment  {
 //        });
 
         //将在前端的东西与后端建立联系（findViewById）
+        floatButton = view.findViewById(R.id.floating_action_button);
         mMapView = view.findViewById(R.id.bmapView);
         if (getArguments()!=null)
         type=getArguments().getString("type");
+        mMarkPoiSearch=PoiSearch.newInstance();
+        mMarkPoiSearch.setOnGetPoiSearchResultListener(new OnGetPoiSearchResultListener() {
+            @Override
+            public void onGetPoiResult(PoiResult result) {
+            }
+
+            @Override
+            public void onGetPoiDetailResult(PoiDetailResult poiDetailResult) {
+
+            }
+
+            @Override
+            public void onGetPoiDetailResult(PoiDetailSearchResult result) {
+                if (result.error == SearchResult.ERRORNO.NO_ERROR) {
+                    PoiDetailInfo poiInfo = result.getPoiDetailInfoList().get(0);
+                    addMarkerForPoi(poiInfo); // 直接添加标记
+                }
+
+            }
+
+            @Override
+            public void onGetPoiIndoorResult(PoiIndoorResult poiIndoorResult) {
+
+            }
+        });
 
 
 
+        floatButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
 
+                fragmentManager = getFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                fragmentTransaction.replace(R.id.fragment, AddNoteFragment.class, null).addToBackStack(null).commit();
+            }
+        });
         //获取地图实例化
         mBaiduMap = mMapView.getMap();
         //设置地图类型为普通视图
@@ -341,12 +388,17 @@ public class MapFragment extends Fragment  {
        //如果是个人地图，显示缩略图
         if (Objects.equals(type, "private")) {
             mBaiduMap.setPoiTagEnable(PoiTagType.All, false);
-            noteList = getLocalNote();
+            noteList=getLocalNote();
             if (noteList != null) {
                 addNotesToMap();
             }
         }
+        getAllNote(notes->{
+            if (notes!=null){
+                showPoiTag(notes);
+            }
 
+        });
     }
     BaiduMap.OnMapClickListener listener = new BaiduMap.OnMapClickListener() {
         /**
@@ -370,6 +422,8 @@ public class MapFragment extends Fragment  {
 
             bundle.putString("poiName",mapPoi.getName());
             bundle.putString("poiId",mapPoi.getUid());
+            bundle.putString("latitude", String.valueOf(mapPoi.getPosition().latitude));
+            bundle.putString("longitude", String.valueOf(mapPoi.getPosition().longitude));
             PoiFragment poiFragment=new PoiFragment();
             poiFragment.setArguments(bundle);
             FragmentManager fragmentManager = getFragmentManager();
@@ -379,7 +433,46 @@ public class MapFragment extends Fragment  {
 
         }
     };
+    private void getAllNote(Consumer<List<NoteEntity>> callback) {
+        NoteDao noteDao = MapApp.getAppDb().noteDao();
+        MyViewModel viewModel = new ViewModelProvider(MapFragment.this).get(MyViewModel.class);
 
+        viewModel.getAllNotes().observe(getViewLifecycleOwner(), notes -> {
+
+            if (notes != null && notes.size() > 0) {
+                callback.accept(notes);
+            } else {
+                callback.accept(noteDao.findByUserID(MapApp.getUserID()));
+            }
+
+        });
+    }
+    private void showPoiTag(List<NoteEntity> notes){
+
+        for (int i=0;i<notes.size();i++){
+            NoteEntity note=notes.get(i);
+            String poiID=note.getPoi_id();
+
+            mMarkPoiSearch.searchPoiDetail(new PoiDetailSearchOption()
+                    .poiUids(poiID));
+        }
+
+    }
+
+    private void addMarkerForPoi(PoiDetailInfo poiInfo) {
+        // 创建标记图标
+        BitmapDescriptor icon = BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding);
+
+        // 构建MarkerOptions
+        MarkerOptions options = new MarkerOptions()
+                .position(poiInfo.getLocation()) // POI坐标
+                .icon(icon)
+                .title(poiInfo.getName()) // POI名称
+                .zIndex(15); // 设置层级
+
+        // 添加标记到地图
+        Marker marker = (Marker) mBaiduMap.addOverlay(options);
+    }
 
 
     private List<NoteEntity> getLocalNote() {
@@ -394,17 +487,17 @@ public class MapFragment extends Fragment  {
         if (allNote.size() > 0) {
             return allNote;
         } else {
-            Log.d(TAG, "getLocalNote: 没有笔记数据");
+            Toast.makeText(getActivity(), "暂无笔记数据", Toast.LENGTH_LONG).show();
             return null;
         }
     }
 
     //将笔记添加到地图上
     private void addNotesToMap() {
-
+        mClusterManager.clearItems();
         List<MyItem> items = new ArrayList<>();
         for (NoteEntity note : noteList) {
-            if (!Objects.equals(note.getPoiId(), "0")) continue;
+            if (!Objects.equals(note.getPoi_id(), "0")) continue;
             if (note.getLatitude() != 0.0 && note.getLongitude() != 0.0) {
 
                 CoordinateConverter converter = new CoordinateConverter();
@@ -415,26 +508,29 @@ public class MapFragment extends Fragment  {
 
                 // 转换为百度坐标（BD-09）
                 LatLng point = converter.convert();
-
-
-                // 获取笔记中的图片
-                BitmapDescriptor icon = getNoteIcon(note);
-
                 Bundle bundle = new Bundle();
                 bundle.putLong("note_id", note.getId());
-
                 //点聚合需要自定义一个类用来implements ClusterItem这个点聚合方法的类
                 MyItem item = new MyItem(point, bundle);
-                item.setBitmapDescriptor(icon);
-                items.add(item);
-                // 创建MarkerOptions并设置锚点
-                MarkerOptions markerOptions = new MarkerOptions()
-                        .position(point)
-                        .icon(icon)
-                        .anchor(0.5f, 1.0f); // 设置锚点为图片底部中心
 
-                // 添加标记到地图
-                mBaiduMap.addOverlay(markerOptions);
+                items.add(item);
+
+                // 2. 先用默认图标占位
+                BitmapDescriptor defaultIcon =
+                        BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding);
+                MarkerOptions options = new MarkerOptions()
+                        .position(point)
+                        .icon(defaultIcon)
+                        .anchor(0.5f, 1.0f);
+
+                Marker marker = (Marker) mBaiduMap.addOverlay(options);
+
+                // 3. 异步加载真实图标并替换
+                loadNoteIconAsync(note, marker,item);
+
+
+
+
             }
         }
 
@@ -477,20 +573,34 @@ public class MapFragment extends Fragment  {
 
 
     }
-    //获取图片，并将其缩放到指定大小
-    private BitmapDescriptor getNoteIcon(NoteEntity note) {
-        if (note.getNote_image_uri() != null) {
-            try {
-                InputStream inputStream = requireActivity().getContentResolver().openInputStream(Uri.parse(note.getNote_image_uri()));
-                Bitmap originalBitmap = BitmapFactory.decodeStream(inputStream);
-                // 调整图片大小
-                Bitmap resizedBitmap = resizeBitmap(originalBitmap, 100, 100); // 调整为 100x100 像素
-                return BitmapDescriptorFactory.fromBitmap(resizedBitmap);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
-        return BitmapDescriptorFactory.fromResource(R.drawable.icon_gcoding); // 默认图标
+    /**
+     * 后台线程用 Glide 加载网络图片，完成后把图标更新到 Marker
+     */
+    private void loadNoteIconAsync(NoteEntity note, Marker marker, MyItem item) {
+        String imgUrl = note.getNote_image_uri();
+        if (TextUtils.isEmpty(imgUrl)) return;
+
+        // 使用 Glide 的 BitmapPool 复用内存
+        Glide.with(requireContext())
+                .asBitmap()
+                .load(imgUrl)
+                .apply(new RequestOptions()
+                        .override(100, 100)
+                        .format(DecodeFormat.PREFER_RGB_565) // 减少内存占用
+                        .diskCacheStrategy(DiskCacheStrategy.ALL))
+                .into(new CustomTarget<Bitmap>() {
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap bitmap, @Nullable Transition<? super Bitmap> transition) {
+                        BitmapDescriptor descriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
+                        marker.setIcon(descriptor);
+                        item.setBitmapDescriptor(descriptor);
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 清理资源时回调
+                    }
+                });
     }
 
     private Bitmap resizeBitmap(Bitmap originalBitmap, int newWidth, int newHeight) {
@@ -739,12 +849,21 @@ public class MapFragment extends Fragment  {
     }
 
 
+
     @Override
     public void onDestroy() {
-        super.onDestroy();
-        mMapView.onDestroy();
+
+        // 释放 Bitmap 资源
+        if (mClusterManager != null) {
+            mClusterManager.clearItems();
+        }
+        // 移除地图监听
+        mBaiduMap.setOnMapStatusChangeListener(null);
         mBaiduMap.setMyLocationEnabled(false);//禁用定位图层
         mlocationClient.stop();
+        mMapView.onDestroy();
+        super.onDestroy();
+
     }
 
     @Override

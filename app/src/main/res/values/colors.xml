@@ -11,6 +11,8 @@
     <color name="selected">#90CAF9</color>
     <color name="blue">#64B5F6</color>
     <color name="yellow">#FFD54F</color>
+    <color name="light_blue">#B3E5FC</color>
+    <color name="light_grey">#E1F5FE</color>
     <!-- 主色和辅助色 -->
     <color name="colorPrimary">#6200EE</color>        <!-- Material 紫色 500 -->
     <color name="colorPrimaryDark">#3700B3</color>    <!-- 深紫色 -->

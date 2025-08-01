@@ -5,15 +5,6 @@
     android:layout_height="match_parent"
     tools:context=".frame.AddNoteFragment">
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/floating_action_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:backgroundTint="@color/blue"
-        android:contentDescription="@string/Description"
-        android:src="@drawable/baseline_add_24"/>
     <!-- TODO: Update blank fragment layout -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -35,11 +26,6 @@
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1"/>
-            <ImageButton
-                android:id="@+id/save_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/baseline_check_24"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -79,23 +65,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
-                <EditText
+                <TextView
                     android:id="@+id/title"
-                    android:hint="Title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="@android:color/transparent"/>
-                <EditText
+                <TextView
                     android:id="@+id/content"
-                    android:hint="Content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="@android:color/transparent"/>
-                <Button
-                    android:id="@+id/voice_input_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="语音输入" />
                 <ImageView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

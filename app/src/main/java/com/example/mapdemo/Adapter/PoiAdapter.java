@@ -1,5 +1,7 @@
 package com.example.mapdemo.Adapter;
 
+import static com.google.android.material.internal.ContextUtils.getActivity;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -7,6 +9,7 @@ import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,18 +25,26 @@ import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Bean.NoteCard;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
 
 import org.w3c.dom.Text;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
     private List<NoteEntity> Mlist;
@@ -71,7 +82,7 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
         holder.slogan.setText(Mlist.get(position).getSlogan());
         holder.title.setText(Mlist.get(position).getTitle());
         holder.content.setText(Mlist.get(position).getContent());
-        Glide.with(context).load(Mlist.get(position).getAvatar_uri()).into(holder.avatar);
+        Glide.with(holder.itemView.getContext()).load(Mlist.get(position).getAvatar_uri()).into(holder.avatar);
         //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
 //        InputStream inputStream= null;
 //        try {
@@ -92,9 +103,12 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-//            Glide.with(context)
-//                    .load(Uri.parse(coverUri))
-//                    .into(holder.cover);
+            Glide.with(context)
+                    .load(Uri.parse(coverUri))
+                    .override(800, 800) // 限制分辨率
+                    .format(DecodeFormat.PREFER_RGB_565) // 内存减半
+                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE) // 只缓存处理后的图
+                    .into(holder.cover);
         } else {
 
             return;
@@ -104,13 +118,19 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
         holder.delete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new AlertDialog.Builder(context).setTitle("是否确定删除？").setPositiveButton("yes", (dialogInterface, i) -> {
-                    delete_position=holder.getLayoutPosition();//手动获取最新position
-                    deleteNote();
+                if (MapApp.getUserID()==Mlist.get(position).getUser_id()){
+                    new AlertDialog.Builder(context).setTitle("是否确定删除？").setPositiveButton("yes", (dialogInterface, i) -> {
+                        delete_position=holder.getLayoutPosition();//手动获取最新position
+                        deleteNote();
 
-                }).setNegativeButton("no", (dialogInterface, i) -> {
+                    }).setNegativeButton("no", (dialogInterface, i) -> {
 
-                }).show();
+                    }).show();
+                }
+                else{
+                    Toast.makeText(context, "您没有删除此笔记的权限！", Toast.LENGTH_LONG).show();
+                }
+
             }
         });
         holder.itemCard.setOnClickListener(new View.OnClickListener() {
@@ -118,11 +138,37 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
             public void onClick(View view) {
                 long id=Mlist.get(position).getId();
                 fragmentHelper.Helper(holder.title.getText().toString(),holder.content.getText().toString(),id);
+                /*if (MapApp.getUserID()==Mlist.get(position).getUser_id()){
+                    fragmentHelper.Helper(holder.title.getText().toString(),holder.content.getText().toString(),id);
+                }
+                else{
+                    Toast.makeText(context, "您没有编辑此笔记的权限！", Toast.LENGTH_LONG).show();
+                }*/
+
             }
         });
     }
 
     private void deleteNote() {
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.deleteNote(Mlist.get(delete_position).getId()).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d("DELETE", "删除成功");
+                    // 可以在这里更新 UI，比如刷新列表
+                } else {
+                    Log.e("DELETE", "删除失败: " + response.code());
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e("DELETE", "请求失败: " + t.getMessage());
+
+            }
+        });
         noteDao.deleteById(Mlist.get(delete_position).getId());
         notifyItemRemoved(delete_position); //该方法不会重置position，因此如果不手动更新会导致越界访问
         Mlist.remove(delete_position);

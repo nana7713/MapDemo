@@ -18,6 +18,8 @@ public interface UserDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void  insertAll(User... users);
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void  insert(User user);
 
     @Query("select * from users where uid like :id")
     User findById(int id);

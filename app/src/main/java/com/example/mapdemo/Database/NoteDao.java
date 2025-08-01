@@ -15,7 +15,9 @@ public interface NoteDao {
     List<NoteEntity> getAll();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void  insertAll(NoteEntity... noteEntities);
+    long[] insertAll(NoteEntity... noteEntities);
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    long insert(NoteEntity noteEntity);
 
     @Update
     public void updateNote(NoteEntity... noteEntities);
@@ -26,8 +28,8 @@ public interface NoteDao {
     NoteEntity findById(long id);
     @Query("select * from note where user_id like :uid")
     List<NoteEntity> findByUserID(int uid);
-    @Query("select * from note where PoiId like :poiId")
-    List<NoteEntity> findByPoiID(String poiId);
+    @Query("select * from note where poi_id like :poi_id")
+    List<NoteEntity> findByPoiID(String poi_id);
 
     @Query("SELECT * FROM note")
     public NoteEntity[] loadAllNotes();

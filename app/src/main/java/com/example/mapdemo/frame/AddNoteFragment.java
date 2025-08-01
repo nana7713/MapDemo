@@ -3,6 +3,7 @@ package com.example.mapdemo.frame;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -32,6 +33,7 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -50,6 +52,7 @@ import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
+import com.example.mapdemo.ImageUploadResponse;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
 import com.example.mapdemo.RetrofitClient;
@@ -63,9 +66,14 @@ import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import com.example.mapdemo.voiceinput.VoiceInputHelper; // 导入 VoiceInputHelper 类
 
 /**
  * A simple {@link Fragment} subclass.
@@ -98,13 +106,24 @@ public class AddNoteFragment extends Fragment {
     private boolean is_new = true;
     private long id;
     private String poiId;
+    private double poiLatitude;
+    private double poiLongitude;
     ActivityResultLauncher<Intent> pickMedia;
     private double exifLatitude=0.0;
     private double exifLongitude=0.0;
     User[] user = new User[1];
+    private VoiceInputHelper voiceInputHelper; //  VoiceInputHelper 成员变量
+    private Button voiceInputButton; // 按钮成员变量
+    NoteEntity noteEntity;
     private User currentUser;
 
+    private Context appContext;
 
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        appContext = context.getApplicationContext();
+    }
 
     // 新增权限请求码
     private static final int MEDIA_LOCATION_PERMISSION_CODE = 2021;
@@ -189,44 +208,27 @@ public class AddNoteFragment extends Fragment {
         Etitle = view.findViewById(R.id.title);
         closeButton = view.findViewById(R.id.close_button);
         saveButton = view.findViewById(R.id.save_button);
+        saveButton.setEnabled(false);
         //User user=userDao.findById(MapApp.getUserID());
         saveTime = view.findViewById(R.id.save_time);
         saveWords=view.findViewById(R.id.save_words);
         note_image=view.findViewById(R.id.note_image);
         floatingActionButton=view.findViewById(R.id.floating_action_button);
+        voiceInputButton = view.findViewById(R.id.voice_input_button);
+        voiceInputHelper = new VoiceInputHelper(requireActivity(), Econtent);
+        voiceInputButton.setOnClickListener(v -> voiceInputHelper.startVoiceInput());
         MyViewModel viewModel = new ViewModelProvider(AddNoteFragment.this).get(MyViewModel.class);
 
-        // 初始化时禁用保存按钮
-        saveButton.setEnabled(false);
-
-        // 先尝试从本地数据库获取用户信息
-        new Thread(() -> {
-            User localUser = userDao.findById(MapApp.getUserID());
-            if (localUser != null) {
-                requireActivity().runOnUiThread(() -> {
-                    user[0] = localUser;
-                    saveButton.setEnabled(true);
-                });
-            }
-        }).start();
-
-        // 观察 LiveData，作为备选方案
+        // 观察 LiveData
         viewModel.getUserByID().observe(getViewLifecycleOwner(), user1 -> {
             if (user1 != null) {
-                user[0] = user1;
+                user[0] =user1;
                 saveButton.setEnabled(true);
-            } else {
-                // 如果网络获取失败，尝试从本地获取
-                new Thread(() -> {
-                    User localUser = userDao.findById(MapApp.getUserID());
-                    if (localUser != null) {
-                        requireActivity().runOnUiThread(() -> {
-                            user[0] = localUser;
-                            saveButton.setEnabled(true);
-                        });
-                    }
-                }).start();
+            }else{
+                user[0]=userDao.findById(MapApp.getUserID());
+                saveButton.setEnabled(true);
             }
+
         });
         pickMedia = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             // Callback is invoked after the user selects a media item or closes the
@@ -250,24 +252,48 @@ public class AddNoteFragment extends Fragment {
         if (getArguments() != null&&getArguments().getString("poiId")!=null){
             Toast.makeText(getActivity(),"test",Toast.LENGTH_LONG).show();
             poiId=getArguments().getString("poiId");
+            poiLatitude= Double.parseDouble(getArguments().getString("poiLatitude"));
+            poiLongitude= Double.parseDouble(getArguments().getString("poiLongitude"));
         }
         if (getArguments() != null&&getArguments().getString("content")!=null) {
             Econtent.setText(getArguments().getString("content"));
             Etitle.setText(getArguments().getString("title"));
             is_new = getArguments().getBoolean("is_new");//判断是否是新添加的笔记
             id = getArguments().getLong("id");
-            NoteEntity noteEntity = noteDao.findById(id);
-            //Glide.with(getActivity()).load(noteEntity.note_image_uri).into(note_image);
-            if (noteEntity.note_image_uri != null) {
-                InputStream inputStream = null;
-                try {
-                    inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
-                } catch (FileNotFoundException e) {
-                    throw new RuntimeException(e);
+
+            viewModel.getNoteByID(id).observe(getViewLifecycleOwner(), noteEntity -> {
+                if (noteEntity!=null) {
+                    this.noteEntity=noteEntity;
+                    String imgUrl = noteEntity.note_image_uri;
+                    if (imgUrl != null && !imgUrl.trim().isEmpty()) {
+                        // 用 Glide 加载网络图片
+                        Glide.with(requireContext())
+                                .load(imgUrl)          // 支持 http/https
+                                .into(note_image);
+                    } else {
+                        // 没有图片时清空 ImageView
+                        note_image.setImageDrawable(null);
+                    }
+
                 }
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                note_image.setImageBitmap(bitmap);
-            }
+                else {
+                    this.noteEntity=noteDao.findById(id);
+                    //如果网络错误就获取本地数据库并渲染图片
+                    //if (noteEntity.note_image_uri != null) {
+                    //                InputStream inputStream = null;
+                    //                try {
+                    //                    inputStream = getActivity().getContentResolver().openInputStream(Uri.parse(noteEntity.note_image_uri));
+                    //                } catch (FileNotFoundException e) {
+                    //                    throw new RuntimeException(e);
+                    //                }
+                    //                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                    //                note_image.setImageBitmap(bitmap);
+                    //            }
+                }
+            });
+
+            //Glide.with(getActivity()).load(noteEntity.note_image_uri).into(note_image);
+
         }
         if (Econtent.getText() != null) {
             saveWords.setText(getString(R.string.note_words,Econtent.getText().toString().trim().length()+""));
@@ -334,99 +360,64 @@ public class AddNoteFragment extends Fragment {
             }
         });
 
-
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 content = Econtent.getText().toString().trim();
                 title = Etitle.getText().toString().trim();
 
                 if (content.isEmpty()) {
-                    if (getActivity() != null && isAdded())
-                        Toast.makeText(getActivity(), "内容不能为空", Toast.LENGTH_LONG).show();
-                    return;
-                }
-
-                // 如果user[0]为null，尝试从本地数据库获取
-                if (user[0] == null) {
-                    new Thread(() -> {
-                        User localUser = userDao.findById(MapApp.getUserID());
-                        if (localUser != null) {
-                            requireActivity().runOnUiThread(() -> {
-                                user[0] = localUser;
-                                // 递归调用保存逻辑
-                                saveNote();
-                            });
-                        } else {
-                            requireActivity().runOnUiThread(() -> {
-                                if (getActivity() != null && isAdded())
-                                    Toast.makeText(getActivity(), "用户信息未加载，请重新登录", Toast.LENGTH_LONG).show();
-                            });
-                        }
-                    }).start();
-                    return;
-                }
-
-                saveNote();
-            }
-        });
-
-    }
-
-    private void saveNote() {
-        save_time = SimpleDateFormat.getDateTimeInstance().format(new Date(System.currentTimeMillis()));
-        saveTime.setText(save_time);
-
-        double finalLat;
-        double finalLng;
-        if (exifLatitude == 0 && exifLongitude == 0) {
-            finalLat = latitude;
-            finalLng = longitude;
-        } else {
-            finalLat = exifLatitude;
-            finalLng = exifLongitude;
-        }
-
-        try {
-            NoteEntity newNote;
-            // 修正：每次保存时都从数据库获取最新用户信息，确保头像和昵称是最新的
-            User latestUser = userDao.findById(MapApp.getUserID());
-            String userName = (latestUser != null && latestUser.getName() != null && !latestUser.getName().isEmpty()) ? latestUser.getName() : (latestUser != null && latestUser.getAccount() != null ? latestUser.getAccount() : "未知用户");
-            String userAvatar = (latestUser != null && latestUser.getAvatar() != null && !latestUser.getAvatar().isEmpty()) ? latestUser.getAvatar() : "";
-            String userSlogan = (latestUser != null && latestUser.getSlogan() != null) ? latestUser.getSlogan() : "";
-            int userId = (latestUser != null) ? latestUser.getUid() : MapApp.getUserID();
-            if (is_new) {
-                if (poiId == null) {
-                    newNote = new NoteEntity(
-                            userName,
-                            userId,
-                            userSlogan,
-                            content,
-                            title,
-                            noteImageUri,
-                            save_time,
-                            userAvatar,
-                            finalLng,
-                            finalLat,
-                            isDirect,
-                            "0"
-                    );
+                    Toast.makeText(getActivity(), "内容不能为空", Toast.LENGTH_LONG).show();
                 } else {
-                    newNote = new NoteEntity(
-                            userName,
-                            userId,
-                            userSlogan,
-                            content,
-                            title,
-                            noteImageUri,
-                            save_time,
-                            userAvatar,
-                            longitude,
-                            latitude,
-                            isDirect,
-                            poiId
-                    );
-                }
+                    save_time = SimpleDateFormat.getDateTimeInstance().format(new Date(System.currentTimeMillis()));
+                    saveTime.setText(save_time);
+
+
+                    //User user = userDao.findById(MapApp.getUserID());//获取当前用户
+                    double finalLat;
+                    double finalLng;
+                    if(exifLatitude==0&&exifLongitude==0)
+                    {
+                        finalLat=latitude;
+                        finalLng=longitude;
+                    }
+                    else
+                    {
+                        finalLat=exifLatitude;
+                        finalLng=exifLongitude;
+                    }
+                    if (is_new) {
+                        NoteEntity newNote;
+                        if (poiId==null){
+                         newNote = new NoteEntity(
+                                user[0].getName(),
+                                user[0].getUid(),
+                                user[0].slogan,// 新增的字段
+                                content,//输入的笔记内容
+                                title,//标题
+                                noteImageUri,//用户选择图片的uri
+                                save_time,//保存时间
+                                user[0].getAvatar(),//头像
+                                finalLng,
+                                finalLat,
+                                isDirect,
+                                "0"
+                        );}else {
+                             newNote = new NoteEntity(
+                                    user[0].getName(),
+                                    user[0].getUid(),
+                                    user[0].slogan,// 新增的字段
+                                    content,//输入的笔记内容
+                                    title,//标题
+                                    noteImageUri,//用户选择图片的uri
+                                    save_time,//保存时间
+                                    user[0].getAvatar(),//头像
+                                    poiLongitude,
+                                    poiLatitude,
+                                    isDirect,
+                                    poiId);
+                        }
 
                 User userDb = userDao.findById(newNote.user_id);
                 if (userDb == null) {
@@ -435,53 +426,182 @@ public class AddNoteFragment extends Fragment {
                     return;
                 }
 
-                noteDao.insertAll(newNote);
+                        User user = userDao.findById(newNote.user_id);
+                        if (user == null) {
+                            throw new IllegalArgumentException("User ID " + newNote.user_id + " 不存在！");
+                        }
+                        noteDao.insertAll(newNote);
 
-                // 网络上传
-                ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-                Call<Void> call = apiService.insert(newNote);
-                call.enqueue(new Callback<Void>() {
-                    @Override
-                    public void onResponse(Call<Void> call, Response<Void> response) {}
-                    @Override
-                    public void onFailure(Call<Void> call, Throwable t) {}
-                });
 
-            } else {
-                ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-                NoteEntity noteEntity = noteDao.findById(id);
+                        // 创建 Retrofit 服务实例
+                        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
-                noteEntity.setContent(content);
-                noteEntity.setTitle(title);
-                if (noteImageUri != null) {
-                    noteEntity.setNote_image_uri(noteImageUri);
+
+                        // 调用上传笔记的方法
+                        Call<NoteEntity> call = apiService.insert(newNote);
+                        call.enqueue(new Callback<NoteEntity>() {
+                            @Override
+                            public void onResponse(Call<NoteEntity> call, Response<NoteEntity> response) {
+                                if (response.isSuccessful()) {
+                                    Log.d("API", "HTTP 成功，状态码: " + response.code());
+                                    Log.d("API", "响应头: " + response.headers());
+                                    // 检查是否是真正的成功（如 204 No Content）
+                                    if (response.code() == 204) {
+                                        Log.w("API", "服务器返回 204，可能未实际保存数据");
+                                    }
+                                    Log.d("RegisterFragment", "笔记上传成功");
+                                    long realId=response.body().id;
+                                    // 准备文件参数
+                                    InputStream inputStream = null;
+                                    if (noteImageUri!=null){
+                                        try {
+                                            inputStream = appContext.getContentResolver().openInputStream(Uri.parse(noteImageUri));
+                                        } catch (FileNotFoundException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        byte[] bytes = null;
+                                        try {
+                                            bytes = new byte[inputStream.available()];
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        try {
+                                            inputStream.read(bytes);
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), bytes);
+                                        MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", "image.jpg", requestFile);
+                                        RequestBody noteIdBody = RequestBody.create(
+                                                MediaType.parse("text/plain"),
+                                                String.valueOf(realId)
+                                        );
+                                        apiService.uploadImage(noteIdBody, filePart).enqueue(new Callback<ImageUploadResponse>() {
+                                            @Override
+                                            public void onResponse(Call<ImageUploadResponse> call, Response<ImageUploadResponse> response) {
+                                                if (response.isSuccessful()) {
+                                                    Log.d("API", "图片上传成功");
+                                                } else {
+                                                    Log.e("API", "图片上传失败：" + response.code());
+                                                }
+                                            }
+
+                                            @Override
+                                            public void onFailure(Call<ImageUploadResponse> call, Throwable t) {
+                                                Log.e("API", "图片上传失败：" + t.getMessage());
+                                            }
+                                        });
+
+                                    }
+
+
+                                } else {
+                                    Log.e("RegisterFragment", "笔记上传失败：" + response.code());
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<NoteEntity> call, Throwable t) {
+
+                                Log.e("RegisterFragment", "网络错误：" + t.getMessage());
+
+                            }
+                        });
+                        //noteDao.insertAll(new NoteEntity(user.getName(), MapApp.getUserID(),user.slogan, content, title, noteImageUri, save_time, user.getAvatar()));
+
+                    }
+                    else {
+                        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+
+
+                        noteEntity.setContent(content);
+                        noteEntity.setTitle(title);
+                        InputStream inputStream = null;
+                        if (noteImageUri!=null){
+                            try {
+                                inputStream = appContext.getContentResolver().openInputStream(Uri.parse(noteImageUri));
+                            } catch (FileNotFoundException e) {
+                                throw new RuntimeException(e);
+                            }
+                            byte[] bytes = null;
+                            try {
+                                bytes = new byte[inputStream.available()];
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            try {
+                                inputStream.read(bytes);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), bytes);
+                            MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", "image.jpg", requestFile);
+                            RequestBody noteIdBody = RequestBody.create(
+                                    MediaType.parse("text/plain"),
+                                    String.valueOf(id)
+                            );
+                            apiService.uploadImage(noteIdBody, filePart).enqueue(new Callback<ImageUploadResponse>() {
+                                @Override
+                                public void onResponse(Call<ImageUploadResponse> call, Response<ImageUploadResponse> response) {
+                                    if (response.isSuccessful()) {
+                                        Log.d("API", "图片上传成功");
+                                    } else {
+                                        Log.e("API", "图片上传失败：" + response.code());
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<ImageUploadResponse> call, Throwable t) {
+                                    Log.e("API", "图片上传失败：" + t.getMessage());
+                                }
+                            });
+
+                        }
+                        noteDao.insertAll(noteEntity);
+
+
+                        // 调用上传笔记的方法
+                        Call<Void> call = apiService.updateNote(id,noteEntity);
+                        call.enqueue(new Callback<Void>() {
+                            @Override
+                            public void onResponse(Call<Void> call, Response<Void> response) {
+                                if (response.isSuccessful()) {
+                                    //原来这里使用Toast作为提示，但是由于网络请求异步执行，可能稍慢于页面的切换，而Toast的显示是依附于页面的，因此在这里使用Toast可能会因为请求完成时页面已经销毁切换导致闪退
+                                } else {
+
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<Void> call, Throwable t) {
+
+                            }
+                        });
+                    }
+
+                    Toast.makeText(getActivity(), "保存成功！", Toast.LENGTH_LONG).show();
+                    fragmentTransaction.remove(AddNoteFragment.this).commit();
+                    fragmentManager.popBackStack();
+
                 }
-                noteDao.updateNote(noteEntity);
 
-                Call<Void> call = apiService.insert(noteEntity);
-                call.enqueue(new Callback<Void>() {
-                    @Override
-                    public void onResponse(Call<Void> call, Response<Void> response) {}
-                    @Override
-                    public void onFailure(Call<Void> call, Throwable t) {}
-                });
             }
+        });
 
-            if (getActivity() != null && isAdded()) {
-                Toast.makeText(getActivity(), "保存成功！", Toast.LENGTH_LONG).show();
-                // 新增：保存成功后自动跳转到FragmentNote页面
-                getParentFragmentManager().popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
-                FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
-                transaction.replace(R.id.fragment, new FragmentNote());
-                transaction.commit();
-            }
-        } catch (Exception e) {
-            Log.e("AddNoteFragment", "保存笔记时发生错误", e);
-            if (getActivity() != null && isAdded())
-                Toast.makeText(getActivity(), "保存失败，请重试", Toast.LENGTH_LONG).show();
-        }
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // 释放 VoiceInputHelper 资源
+        if (voiceInputHelper != null) {
+            voiceInputHelper.destroy();
+        }
+        // 停止定位客户端
+        if (mLocationClient != null && mLocationClient.isStarted()) {
+            mLocationClient.stop();
+        }
+    }
     private void handleSelectedImage(Uri uri) {
         loadImageWithLocation(uri);
         try (InputStream inputStream = requireActivity().getContentResolver().openInputStream(uri)) {

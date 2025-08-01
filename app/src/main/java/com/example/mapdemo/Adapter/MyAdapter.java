@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -27,6 +28,9 @@ import androidx.room.Room;
 
 import com.baidu.mapapi.clusterutil.ui.Comment;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Bean.NoteCard;
 import com.example.mapdemo.Database.AppDatabase;
 import com.example.mapdemo.Database.CommentInfo;
@@ -37,6 +41,9 @@ import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
+
+import org.w3c.dom.Text;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.io.FileNotFoundException;
@@ -45,6 +52,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
     private List<NoteCard> Mlist;
@@ -90,7 +101,7 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         holder.slogan.setText(Mlist.get(position).getUser_slogan());
         holder.title.setText(Mlist.get(position).getNote_title());
         holder.content.setText(Mlist.get(position).getNote_content());
-        Glide.with(context).load(Mlist.get(position).getUser_avatar()).into(holder.avatar);
+        Glide.with(holder.itemView.getContext()).load(Mlist.get(position).getUser_avatar()).into(holder.avatar);
         //Glide.with(context).load(Mlist.get(position).getCover()).into(holder.cover);
 //        InputStream inputStream= null;
 //        try {
@@ -102,18 +113,12 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         // 处理封面图片加载，添加异常捕获
         String coverUri = Mlist.get(position).getCover();
         if (coverUri != null && !coverUri.isEmpty()) {
-            try {
-                InputStream inputStream = context.getContentResolver().openInputStream(Uri.parse(coverUri));
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                holder.cover.setImageBitmap(bitmap);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-//            Glide.with(context)
-//                    .load(Uri.parse(coverUri))
-//                    .into(holder.cover);
+            Glide.with(context)
+                    .load(Uri.parse(coverUri))
+                    .override(800, 800) // 限制分辨率
+                    .format(DecodeFormat.PREFER_RGB_565) // 内存减半
+                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE) // 只缓存处理后的图
+                    .into(holder.cover);
         }
         //holder.cover.setImageBitmap(bitmap);
         holder.createTime.setText(Mlist.get(position).getCreate_time());
@@ -278,6 +283,26 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         }
     }
     private void deleteNote() {
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.deleteNote(Mlist.get(delete_position).getCardID()).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d("DELETE", "删除成功");
+                    // 可以在这里更新 UI，比如刷新列表
+                } else {
+                    Log.e("DELETE", "删除失败: " + response.code());
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e("DELETE", "请求失败: " + t.getMessage());
+
+            }
+        });
+
         noteDao.deleteById(Mlist.get(delete_position).getCardID());
         notifyItemRemoved(delete_position); //该方法不会重置position，因此如果不手动更新会导致越界访问
         Mlist.remove(delete_position);

@@ -5,7 +5,7 @@
     android:clickable="true"
     android:id="@+id/item_card"
     android:layout_margin="10dp"
-    android:background="@color/white"
+    android:background="@drawable/frame"
     android:orientation="vertical">
 
     <LinearLayout
@@ -80,6 +80,7 @@
         android:id="@+id/cover"
         android:layout_width="match_parent"
         android:layout_height="150dp"
+        android:padding="4dp"
         android:scaleType="centerCrop"
         android:src="@mipmap/ic_launcher"/>
     <LinearLayout
@@ -91,22 +92,27 @@
         android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:padding="10dp"
         android:text="Title"
         android:textSize="25dp"/>
     <TextView
         android:id="@+id/content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=""
+        android:padding="10dp"
+        android:text="oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
         android:ellipsize="end"
         android:maxLines="2"
         android:textSize="15dp"/>
     <Button
         android:layout_gravity="end|bottom"
         android:id="@+id/deleteButton"
+        android:background="@drawable/btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="@color/white"
         android:text="Delete"
+        android:layout_margin="10dp"
         />
         <!-- 新增评论按钮 -->
         <Button
