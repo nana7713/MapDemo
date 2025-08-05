@@ -115,7 +115,6 @@ public class AddNoteFragment extends Fragment {
     private VoiceInputHelper voiceInputHelper; //  VoiceInputHelper 成员变量
     private Button voiceInputButton; // 按钮成员变量
     NoteEntity noteEntity;
-    private User currentUser;
 
     private Context appContext;
 
@@ -390,21 +389,21 @@ public class AddNoteFragment extends Fragment {
                     if (is_new) {
                         NoteEntity newNote;
                         if (poiId==null){
-                         newNote = new NoteEntity(
-                                user[0].getName(),
-                                user[0].getUid(),
-                                user[0].slogan,// 新增的字段
-                                content,//输入的笔记内容
-                                title,//标题
-                                noteImageUri,//用户选择图片的uri
-                                save_time,//保存时间
-                                user[0].getAvatar(),//头像
-                                finalLng,
-                                finalLat,
-                                isDirect,
-                                "0"
-                        );}else {
-                             newNote = new NoteEntity(
+                            newNote = new NoteEntity(
+                                    user[0].getName(),
+                                    user[0].getUid(),
+                                    user[0].slogan,// 新增的字段
+                                    content,//输入的笔记内容
+                                    title,//标题
+                                    noteImageUri,//用户选择图片的uri
+                                    save_time,//保存时间
+                                    user[0].getAvatar(),//头像
+                                    finalLng,
+                                    finalLat,
+                                    isDirect,
+                                    "0"
+                            );}else {
+                            newNote = new NoteEntity(
                                     user[0].getName(),
                                     user[0].getUid(),
                                     user[0].slogan,// 新增的字段
@@ -419,12 +418,11 @@ public class AddNoteFragment extends Fragment {
                                     poiId);
                         }
 
-                User userDb = userDao.findById(newNote.user_id);
-                if (userDb == null) {
-                    if (getActivity() != null && isAdded())
-                        Toast.makeText(getActivity(), "用户信息错误，请重新登录", Toast.LENGTH_LONG).show();
-                    return;
-                }
+
+                        Log.d("Debug", "插入数据库前的 longitude: " + newNote.longitude);
+                        if ( latitude != 0.0 && longitude != 0.0&& !Double.isNaN(latitude)&&!Double.isNaN(longitude)) {
+                            Log.d("DatabaseDebug", "新笔记经纬度: " + newNote.getLatitude() + ", " + newNote.getLongitude());
+                        }
 
                         User user = userDao.findById(newNote.user_id);
                         if (user == null) {
@@ -700,7 +698,7 @@ public class AddNoteFragment extends Fragment {
             String normalized=stringDMS.replaceAll(" ",",");
             String[] dmsParts = normalized.split(",", 3);
             if (dmsParts.length != 3) {
-               // Log.e("CONVERT_DEGREE", "无效的度分秒格式: " + stringDMS);
+                // Log.e("CONVERT_DEGREE", "无效的度分秒格式: " + stringDMS);
                 throw new IllegalArgumentException("Invaild DMS format:"+stringDMS );
                 //return 0.0;
             }
@@ -963,7 +961,7 @@ public class AddNoteFragment extends Fragment {
 //                exifLatitude = bdPoint.latitude;
 //                exifLongitude = bdPoint.longitude;
                 exifLatitude = gcj02Point .latitude;
-               exifLongitude = gcj02Point.longitude;
+                exifLongitude = gcj02Point.longitude;
             }
             else{
                 Log.d("EXIF_DEBUG", "坐标越界: "
