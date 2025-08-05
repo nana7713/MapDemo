@@ -102,11 +102,26 @@ public class MyPageFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         mine_list = view.findViewById(R.id.mine_list);
-        userName = view.findViewById(R.id.tv_nickname);
-        avatar = view.findViewById(R.id.iv_picture);
-        age = view.findViewById(R.id.age);
-        place = view.findViewById(R.id.place);
-        gender = view.findViewById(R.id.gender);
+        userName=view.findViewById(R.id.tv_nickname);
+        avatar=view.findViewById(R.id.iv_picture);
+        age=view.findViewById(R.id.age);
+        place=view.findViewById(R.id.place);
+        gender=view.findViewById(R.id.gender);
+        MyViewModel myViewModel=new ViewModelProvider(this).get(MyViewModel.class);
+        myViewModel.getUserByID().observe(getViewLifecycleOwner(),user -> {
+            if (user != null) {
+                userName.setText(user.getName());
+                age.setText(user.getAge());
+                place.setText(user.getPlace());
+                gender.setText(user.getGender());
+                Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
+            } else {
+                Toast.makeText(getActivity(), "未找到该用户信息，请重新登录", Toast.LENGTH_LONG).show();
+            }
+        });
+
+
+
         mStringList = new ArrayList<>();
         mStringList.add("我的笔记");
         mStringList.add("我的相册");
@@ -121,62 +136,17 @@ public class MyPageFragment extends Fragment {
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                     fragmentManager.popBackStack();
                     fragmentTransaction.replace(R.id.fragment, FragmentNote.class, null).addToBackStack(null).commit();
+
                 }
                 if (i==2){//设置
                     fragmentManager = getFragmentManager();
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                     fragmentManager.popBackStack();
                     fragmentTransaction.replace(R.id.fragment, SetFragment.class, null).addToBackStack(null).commit();
+
                 }
             }
-        });
-    }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        // 防御性判空
-        if (userName == null || age == null || place == null || gender == null || avatar == null) {
-            return;
-        }
-        // 重新加载用户信息
-        new Thread(() -> {
-            User user = MapApp.getAppDb().userDao().findById(MapApp.getUserID());
-            if (getActivity() != null && isAdded()) {
-                getActivity().runOnUiThread(() -> {
-                    if (user != null) {
-                        userName.setText(user.getName() == null || user.getName().isEmpty() ? "未设置昵称" : user.getName());
-                        gender.setText(user.getGender() == null || user.getGender().isEmpty() ? "未知" : user.getGender());
-                        age.setText(user.getAge() == null || user.getAge().isEmpty() ? "未设置年龄" : user.getAge() + "岁");
-                        place.setText(user.getPlace() == null || user.getPlace().isEmpty() ? "未设置地区" : user.getPlace());
-                        if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
-                            Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
-                        } else {
-                            avatar.setImageResource(R.mipmap.ic_launcher);
-                        }
-                    } else {
-                        loadUserFromNetwork();
-                    }
-                });
-            }
-        }).start();
-    }
-    private void loadUserFromNetwork() {
-        MyViewModel myViewModel = new ViewModelProvider(this).get(MyViewModel.class);
-        myViewModel.getUserByID().observe(getViewLifecycleOwner(), user -> {
-            if (user != null) {
-                // 更新UI
-                userName.setText(user.getName());
-                age.setText(user.getAge());
-                place.setText(user.getPlace());
-                gender.setText(user.getGender());
-                Glide.with(getActivity()).load(user.getAvatar()).into(avatar);
-
-                // 保存到本地数据库
-                new Thread(() -> MapApp.getAppDb().userDao().insertAll(user)).start();
-            } else {
-                Toast.makeText(getActivity(), "未找到该用户信息，请重新登录", Toast.LENGTH_LONG).show();
-            }
         });
     }
 }

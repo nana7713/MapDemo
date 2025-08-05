@@ -102,6 +102,18 @@
                 android:layout_marginLeft="40dp"
                 android:text="自动登录" />
 
+            <TextView
+                android:id="@+id/jumpToRegister"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:layout_marginTop="5dp"
+                android:layout_marginRight="20dp"
+                android:clickable="true"
+                android:text="还没有账号？"
+                android:textColor="@color/blue"
+                android:textSize="20dp" />
+
         </LinearLayout>
 
         <LinearLayout
@@ -122,17 +134,6 @@
                 android:textSize="25dp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/jumpToRegister"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:layout_marginTop="5dp"
-            android:layout_marginRight="20dp"
-            android:clickable="true"
-            android:text="还没有账号？"
-            android:textColor="@color/blue"
-            android:textSize="20dp" />
     </LinearLayout>
 
 </LinearLayout>
