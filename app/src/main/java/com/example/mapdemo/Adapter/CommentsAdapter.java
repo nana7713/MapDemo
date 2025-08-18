@@ -1,7 +1,9 @@
 package com.example.mapdemo.Adapter;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,21 +11,36 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.ViewModelStoreOwner;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.baidu.mapapi.clusterutil.ui.Comment;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Database.AppDatabase;
 import com.example.mapdemo.Database.CommentDao;
 import com.example.mapdemo.Database.CommentInfo;
+import com.example.mapdemo.Database.User;
+import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
+import com.example.mapdemo.ViewModel.MyViewModel;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHolder>{
     private List<Comment> comments;
@@ -31,12 +48,20 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
     private java.util.function.BiFunction<List<com.example.mapdemo.Database.CommentInfo>, com.example.mapdemo.Database.UserDao, List<com.baidu.mapapi.clusterutil.ui.Comment>> buildHierarchyFunc;
     private Runnable onCommentChanged;
     private MyAdapter myAdapter;
-    public CommentsAdapter(List<Comment> comments, long noteId, java.util.function.BiFunction<List<com.example.mapdemo.Database.CommentInfo>, com.example.mapdemo.Database.UserDao, List<com.baidu.mapapi.clusterutil.ui.Comment>> buildHierarchyFunc, Runnable onCommentChanged, MyAdapter myAdapter) {
+    private ApiService apiService;
+    private MyViewModel viewModel;
+
+    public CommentsAdapter(List<Comment> comments, long noteId, BiFunction<List<CommentInfo>, UserDao, List<Comment>> buildHierarchyFunc, Runnable onCommentChanged, MyAdapter myAdapter,MyViewModel viewModel) {
         this.comments = comments;
         this.noteId = noteId;
         this.buildHierarchyFunc = buildHierarchyFunc;
         this.onCommentChanged = onCommentChanged;
         this.myAdapter = myAdapter;
+        apiService = RetrofitClient.getClient().create(ApiService.class);
+//        if (MapApp.getAppDb() != null) {
+//            viewModel = new ViewModelProvider((ViewModelStoreOwner) MapApp.getAppDb()).get(MyViewModel.class);
+//        }
+        this.viewModel=viewModel;
     }
     @NonNull
     @Override
@@ -167,44 +192,53 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
             if (currentPosition == RecyclerView.NO_POSITION) return;
 
             Comment commentToDelete = comments.get(currentPosition);
-
-            // 保存被删除评论的ID和位置
-            long deletedCommentId = commentToDelete.getCommentId();
-            int deletedPosition = currentPosition;
-
-            new Thread(() -> {
-                // 递归删除评论及其所有子评论
-                deleteCommentAndChildren(commentToDelete.getCommentId());
-
-                // 直接更新当前适配器的数据，而不是重新加载整个树
-                ((Activity) holder.itemView.getContext()).runOnUiThread(() -> {
-                    // 从当前列表中移除被删除的评论
-                    comments.remove(deletedPosition);
-
-                    // 使用更精确的更新方法
-                    notifyItemRemoved(deletedPosition);
-
-                    // 如果删除后列表为空，更新可见性
-                    if (comments.isEmpty()) {
-                        // 尝试找到父ViewHolder
-                        View parent = (View) holder.itemView.getParent();
-                        if (parent != null) {
-                            RecyclerView rvReplies = parent.findViewById(R.id.rv_replies);
-                            if (rvReplies != null) {
-                                rvReplies.setVisibility(View.GONE);
-                            }
-                        }
-                    }
-
-                    if (onCommentChanged != null) {
-                        onCommentChanged.run();
-                    }
-                    // 新增：强制刷新评论数量
-                    if (myAdapter != null) {
-                        myAdapter.refreshCommentCountOnMainThread(noteId);
-                    }
-                });
-            }).start();
+            // 显示确认对话框
+            new AlertDialog.Builder(holder.itemView.getContext())
+                    .setTitle("删除评论")
+                    .setMessage("确定要删除这条评论吗？")
+                    .setPositiveButton("删除", (dialog, which) -> {
+                        // 直接调用ViewModel的删除方法
+                        deleteCommentAndChildren(commentToDelete, position,holder.itemView.getContext());
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+//            // 保存被删除评论的ID和位置
+//            long deletedCommentId = commentToDelete.getCommentId();
+//            int deletedPosition = currentPosition;
+//
+//            new Thread(() -> {
+//                // 递归删除评论及其所有子评论
+//                deleteCommentAndChildren(commentToDelete.getCommentId(),holder, deletedPosition);
+//
+//                // 直接更新当前适配器的数据，而不是重新加载整个树
+//                ((Activity) holder.itemView.getContext()).runOnUiThread(() -> {
+//                    // 从当前列表中移除被删除的评论
+//                    comments.remove(deletedPosition);
+//
+//                    // 使用更精确的更新方法
+//                    notifyItemRemoved(deletedPosition);
+//
+//                    // 如果删除后列表为空，更新可见性
+//                    if (comments.isEmpty()) {
+//                        // 尝试找到父ViewHolder
+//                        View parent = (View) holder.itemView.getParent();
+//                        if (parent != null) {
+//                            RecyclerView rvReplies = parent.findViewById(R.id.rv_replies);
+//                            if (rvReplies != null) {
+//                                rvReplies.setVisibility(View.GONE);
+//                            }
+//                        }
+//                    }
+//
+//                    if (onCommentChanged != null) {
+//                        onCommentChanged.run();
+//                    }
+//                    // 新增：强制刷新评论数量
+//                    if (myAdapter != null) {
+//                        myAdapter.refreshCommentCountOnMainThread(noteId);
+//                    }
+//                });
+//            }).start();
         });
 
     }
@@ -232,7 +266,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
         // 使用评论ID作为视图类型，确保唯一性
         return (int) comments.get(position).getCommentId();
     }
-    static class ViewHolder extends RecyclerView.ViewHolder {
+    class ViewHolder extends RecyclerView.ViewHolder {
         public CommentsAdapter repliesAdapter;
         TextView tvUserName, tvContent;
         RecyclerView rvReplies;
@@ -265,7 +299,8 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
                         noteId,
                         buildHierarchyFunc,
                         onCommentChanged,
-                        myAdapter
+                        myAdapter,
+                        viewModel
                 );
                 rvReplies.setAdapter(repliesAdapter);
             }
@@ -338,8 +373,8 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
     }
 
     private void showReplyBottomSheet(Context context, Long parentCommentId) {
-        android.app.Activity activity = (android.app.Activity) context;
-        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(activity);
+        Activity activity = (Activity) context;
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(activity);
         View dialogView = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_comments, null);
         bottomSheet.setContentView(dialogView);
         EditText etInput = dialogView.findViewById(R.id.et_comment_input);
@@ -350,12 +385,12 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
         btnSend.setOnClickListener(v -> {
             String content = etInput.getText().toString().trim();
             if (content.isEmpty()) return;
-            int userId = com.example.mapdemo.MapApp.getUserID();
+            int userId = MapApp.getUserID();
             new Thread(() -> {
-                com.example.mapdemo.Database.AppDatabase db = com.example.mapdemo.MapApp.getAppDb();
-                com.example.mapdemo.Database.User user = db.userDao().findById(userId);
+                AppDatabase db = MapApp.getAppDb();
+                User user = db.userDao().findById(userId);
                 if (user == null) return;
-                com.example.mapdemo.Database.CommentInfo reply = new com.example.mapdemo.Database.CommentInfo();
+                CommentInfo reply = new CommentInfo();
                 reply.setPost_id(noteId);
                 reply.setUser_id(userId);
                 reply.setComment_content(content);
@@ -369,7 +404,31 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
                 reply.setSynced(false);
                 reply.setUsername(user.getName() != null && !user.getName().isEmpty() ? user.getName() : user.getAccount());
                 reply.setAvatar(user.getAvatar()); // 新增：设置头像字段
+                if (parentCommentId != null && parentCommentId != 0) {
+                    CommentInfo parentComment = db.commentDao().getCommentById(parentCommentId);
+                    if (parentComment == null) {
+                        activity.runOnUiThread(() ->
+                                Toast.makeText(activity, "回复的评论不存在", Toast.LENGTH_SHORT).show());
+                        return;
+                    }
+                }
                 db.commentDao().insertComment(reply);
+                if (viewModel != null) {
+                    viewModel.syncComment(reply, () -> {
+                        // 刷新评论树
+                        List<CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
+                        List<Comment> newComments = buildHierarchyFunc.apply(newEntities, db.userDao());
+                        activity.runOnUiThread(() -> {
+                            updateComments(newComments);
+                            bottomSheet.dismiss();
+                            // 新增：回调外层刷新评论数量
+                            if (onCommentChanged != null) onCommentChanged.run();
+                        });
+                    });
+                } else {
+                    // 如果viewModel不可用，使用全局同步
+                    MapApp.getInstance().syncUnsyncedComments();
+                }
 //                // 重新查询并刷新评论树
 //                List<com.example.mapdemo.Database.CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
 //                List<com.baidu.mapapi.clusterutil.ui.Comment> newComments = buildHierarchyFunc.apply(newEntities, db.userDao());
@@ -412,13 +471,71 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
         bottomSheet.show();
     }
     // 新增：递归删除评论及其所有子评论
-    public void deleteCommentAndChildren(long commentId) {
-        CommentDao commentDao = MapApp.getAppDb().commentDao();
-        List<CommentInfo> children = commentDao.getChildComments(commentId);
-        for (CommentInfo child : children) {
-            deleteCommentAndChildren(child.getComment_id());
+//    public void deleteCommentAndChildren(long commentId) {
+//        CommentDao commentDao = MapApp.getAppDb().commentDao();
+//        List<CommentInfo> children = commentDao.getChildComments(commentId);
+//        for (CommentInfo child : children) {
+//            deleteCommentAndChildren(child.getComment_id());
+//        }
+//        commentDao.deleteCommentById(commentId);
+//    }
+    private void deleteCommentAndChildren(Comment comment, int position,Context context) {
+        // 1. 收集所有需要删除的评论ID（包括子评论）
+        List<Long> commentIds = new ArrayList<>();
+        collectCommentIds(comment, commentIds);
+
+        // 2. 从UI中立即移除
+        comments.remove(position);
+        notifyItemRemoved(position);
+
+        // 3. 在后台删除本地和服务器数据
+        new Thread(() -> {
+            // 删除本地数据
+            CommentDao commentDao = MapApp.getAppDb().commentDao();
+            for (long id : commentIds) {
+                commentDao.deleteCommentById(id);
+            }
+
+            // 删除服务器数据
+            deleteCommentsOnServer(commentIds);
+
+            // 刷新评论数量
+            if (onCommentChanged != null) {
+                ((Activity) context).runOnUiThread(onCommentChanged);
+            }
+        }).start();
+    }
+
+    // 递归收集所有需要删除的评论ID（包括子评论）
+    private void collectCommentIds(Comment comment, List<Long> ids) {
+        ids.add(comment.getCommentId());
+        for (Comment reply : comment.getReplies()) {
+            collectCommentIds(reply, ids);
         }
-        commentDao.deleteCommentById(commentId);
+    }
+
+    // 同步删除服务器上的评论
+    private void deleteCommentsOnServer(List<Long> commentIds) {
+        // 使用ViewModel批量删除（如果可用）
+        if (viewModel != null) {
+            viewModel.deleteCommentsBatch(commentIds);
+        } else {
+            // 直接API调用
+            ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+            for (long commentId : commentIds) {
+                try {
+                    // 同步执行删除请求
+                    Response<Void> response = apiService.deleteComment(commentId).execute();
+                    if (response.isSuccessful()) {
+                        Log.d("DELETE_COMMENT", "评论删除成功: " + commentId);
+                    } else {
+                        Log.e("DELETE_COMMENT", "评论删除失败: " + response.code());
+                    }
+                } catch (IOException e) {
+                    Log.e("DELETE_COMMENT", "网络错误: " + e.getMessage());
+                }
+            }
+        }
     }
 
 }

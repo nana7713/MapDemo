@@ -44,6 +44,8 @@ import com.example.mapdemo.R;
 import com.example.mapdemo.RetrofitClient;
 
 import org.w3c.dom.Text;
+
+import com.example.mapdemo.ViewModel.MyViewModel;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.io.FileNotFoundException;
@@ -66,13 +68,14 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
     FragmentManager fragmentManager;
     CountInterface countInterface;
     FragmentHelper fragmentHelper;
+    private MyViewModel viewModel;
     // 新增：评论数量刷新回调接口
     public interface CommentCountRefresher {
         void refreshCommentCount(long noteId);
     }
     private CommentCountRefresher commentCountRefresher;
 
-    public MyAdapter(List<NoteCard> mlist, Context context,CountInterface countInterface,FragmentHelper fragmentHelper) {
+    public MyAdapter(List<NoteCard> mlist, Context context,CountInterface countInterface,FragmentHelper fragmentHelper,MyViewModel viewModel) {
         Mlist = mlist;
         this.context = context;
         inflater= LayoutInflater.from(context);
@@ -80,6 +83,7 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
         this.fragmentHelper=fragmentHelper;
         // 默认实现为空
         this.commentCountRefresher = null;
+        this.viewModel = viewModel;
     }
     // 新增：支持外部设置刷新回调
     public void setCommentCountRefresher(CommentCountRefresher refresher) {
@@ -190,7 +194,8 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
                         noteId,
                         this::buildCommentHierarchy,
                         () -> refreshCommentCountOnMainThread(noteId),
-                        this
+                        this,
+                        viewModel
                 );
                 rvComments.setAdapter(adapter);
             });
@@ -202,7 +207,19 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
             new Thread(() -> {
                 AppDatabase db = MapApp.getAppDb();
                 User user = db.userDao().findById(userId);
-                if (user == null) return;
+                UserDao userDao = MapApp.getAppDb().userDao();
+                if (user == null) {
+                    // 如果用户不存在，创建并插入用户
+                    user = new User("用户" + userId, "");
+                    user.setUid(userId);
+                    user.setName("用户" + userId);
+                    user.setAccount("用户" + userId);
+                    User finalUser = user;
+                    new Thread(() -> {
+                        // 3. 通过实例调用 insertAll
+                        userDao.insertAll(finalUser);
+                    }).start();
+                }
                 CommentInfo newComment = new CommentInfo(noteId, content, userId);
                 newComment.setUsername(user.getName() != null && !user.getName().isEmpty() ? user.getName() : user.getAccount());
                 newComment.setAvatar(user.getAvatar()); // 关键：插入时赋值avatar
@@ -215,7 +232,8 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
                             noteId,
                             this::buildCommentHierarchy,
                             ()-> refreshCommentCountOnMainThread(noteId),
-                            this
+                            this,
+                            viewModel
                     );
                     rvComments.setAdapter(adapter);
                     etInput.setText("");

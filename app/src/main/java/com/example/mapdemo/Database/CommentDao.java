@@ -3,6 +3,7 @@ package com.example.mapdemo.Database;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import java.util.List;
 @Dao
@@ -21,4 +22,8 @@ public interface CommentDao {
     int getCommentCountByPostId(long post_id);
     @Query("SELECT * FROM comments WHERE parentcomment_id = :parentId")
     List<CommentInfo> getChildComments(long parentId);
+    @Update
+    void updateComment(CommentInfo comment);
+    @Query("SELECT * FROM comments WHERE comment_id = :commentId")
+    CommentInfo getCommentById(long commentId);
 }

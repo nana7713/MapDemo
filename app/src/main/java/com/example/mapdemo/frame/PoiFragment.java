@@ -130,7 +130,7 @@ public class PoiFragment extends Fragment {
                         fragmentTransaction.replace(R.id.fragment, readFragment,null).addToBackStack(null).commit();
 
                     }
-                });
+                },viewModel);
 
                 recyclerView.setAdapter(poiAdapter);
                 RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getActivity(),2);

@@ -161,7 +161,7 @@ public class FragmentNote extends Fragment {
                 fragmentTransaction.replace(R.id.fragment, addNoteFragment,null).addToBackStack(null).commit();
 
 }
-        });
+        },viewModel);
                 recyclerView.setAdapter(myAdapter);
 RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getActivity());
         recyclerView.setLayoutManager(layoutManager);

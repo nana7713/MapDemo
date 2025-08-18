@@ -1,6 +1,7 @@
 package com.example.mapdemo.frame;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,22 +12,31 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.baidu.mapapi.clusterutil.ui.Comment;
 import com.example.mapdemo.Adapter.CommentsAdapter;
+import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Database.CommentDao;
 import com.example.mapdemo.Database.CommentInfo;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
+import com.example.mapdemo.RetrofitClient;
+import com.example.mapdemo.ViewModel.MyViewModel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class CommentFragment extends Fragment {
     private CommentDao commentDao;
@@ -35,6 +45,8 @@ public class CommentFragment extends Fragment {
     private Button btnSubmit;
     private RecyclerView rvComments;
     private CommentsAdapter adapter;
+    private ApiService apiService;
+    private MyViewModel viewModel;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -45,6 +57,9 @@ public class CommentFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        //初始化api服务
+        apiService = RetrofitClient.getClient().create(ApiService.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(MyViewModel.class);
 
         etComment = view.findViewById(R.id.et_comment_input);
         btnSubmit = view.findViewById(R.id.btn_send);
@@ -85,7 +100,8 @@ public class CommentFragment extends Fragment {
                 },
                 //() -> {},
                 refreshCallback, // 传递刷新回调
-                null // 传递null，CommentFragment不需要递归删除
+                null,// 传递null，CommentFragment不需要递归删除
+                viewModel
         );
         rvComments.setAdapter(adapter);
         rvComments.setItemAnimator(null);
@@ -97,7 +113,27 @@ public class CommentFragment extends Fragment {
             }
         });
 
+        viewModel.getCommentLiveData().observe(getViewLifecycleOwner(), new Observer<List<CommentInfo>>() {
+            @Override
+            public void onChanged(List<CommentInfo> commentInfos) {
+                if (commentInfos != null) {
+                    // 将CommentInfo转换为UI展示用的Comment对象
+                    List<Comment> uiComments = convertToUiModel(commentInfos);
+                    adapter.updateComments(uiComments);
+                }
+            }
+        });
+        // 观察用户数据变化
+        viewModel.getUserLiveData().observe(getViewLifecycleOwner(), new Observer<User>() {
+            @Override
+            public void onChanged(User user) {
+                // 当用户信息更新时，刷新评论列表
+                loadComments();
+            }
+        });
+
         loadComments();
+        checkAndSyncUnsyncedComments();
     }
 
     @Override
@@ -112,20 +148,64 @@ public class CommentFragment extends Fragment {
 
     private void loadComments() {
         new Thread(() -> {
-            // 1. 从数据库获取CommentInfo实体
-            List<CommentInfo> commentInfos = commentDao.getCommentsByPostId(noteId);
+            viewModel.getCommentsByPostId(noteId);
+            // 设置超时处理
+            new android.os.Handler().postDelayed(() -> {
+                // 如果5秒后还没有数据，从本地数据库加载
+                if (viewModel.getCommentLiveData().getValue() == null) {
+                    List<CommentInfo> commentInfos = commentDao.getCommentsByPostId(noteId);
 
-            // 2. 转换为UI展示用的Comment对象
-            List<Comment> uiComments = convertToUiModel(commentInfos);
+                    // 2. 转换为UI展示用的Comment对象
+                    List<Comment> uiComments = convertToUiModel(commentInfos);
 
-            requireActivity().runOnUiThread(() -> {
-                // 3. 更新UI
-                if (adapter != null) {
-                    adapter.updateComments(uiComments);
+                    requireActivity().runOnUiThread(() -> {
+                        viewModel.getCommentLiveData().setValue(commentInfos);
+                        // 3. 更新UI
+                        if (adapter != null) {
+                            adapter.updateComments(uiComments);
+                        }
+                    });
                 }
-            });
+            }, 5000);
+            // 1. 从数据库获取CommentInfo实体
+
         }).start();
     }
+    private void checkAndSyncUnsyncedComments() {
+        new Thread(() -> {
+            // 获取所有未同步的评论
+            List<CommentInfo> unsyncedComments = commentDao.getUnsyncedComments();
+
+            if (!unsyncedComments.isEmpty()) {
+                Log.d("CommentSync", "发现未同步评论: " + unsyncedComments.size() + "条");
+
+                // 批量同步评论到服务器
+                Call<List<CommentInfo>> call = apiService.syncCommentsBatch(unsyncedComments);
+                call.enqueue(new Callback<List<CommentInfo>>() {
+                    @Override
+                    public void onResponse(Call<List<CommentInfo>> call, Response<List<CommentInfo>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            new Thread(() -> {
+                                // 标记已同步的评论
+                                for (CommentInfo comment : response.body()) {
+                                    commentDao.markAsSynced(comment.getComment_id());
+                                }
+                                Log.d("CommentSync", "批量同步成功");
+                            }).start();
+                        } else {
+                            Log.e("CommentSync", "批量同步失败: " + response.code());
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<List<CommentInfo>> call, Throwable t) {
+                        Log.e("CommentSync", "批量同步网络错误: " + t.getMessage());
+
+                    }
+                });
+            }
+        }).start();
+    }
+
 
     private List<Comment> convertToUiModel(List<CommentInfo> commentInfos) {
         // 预加载用户ID到用户名的映射
@@ -173,29 +253,132 @@ public class CommentFragment extends Fragment {
     }
 
     private void addComment(String content) {
+//        new Thread(() -> {
+//            viewModel.getUserByID();
+//            User user = getCurrentUser();
+//            if (user == null) {
+//                Toast.makeText(getContext(), "无法获取用户信息", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+//            //int userId = MapApp.getUserID();
+//
+//            // 创建数据库实体CommentInfo
+//            CommentInfo newComment = new CommentInfo(noteId, content, user.getUid());
+////            newComment.setUsername(getCurrentUserName()); // 设置用户名
+////            // 设置头像字段，保证一级评论也有头像
+////            UserDao userDao = MapApp.getAppDb().userDao();
+////            User user = userDao.findById(userId);
+////            if (user != null) {
+////                newComment.setAvatar(user.getAvatar());
+////            }
+//            newComment.setUsername(user.getName() != null ? user.getName() : user.getAccount());
+//            newComment.setAvatar(user.getAvatar());
+//            newComment.setSynced(false); // 标记为未同步
+//
+//           // new Thread(() -> {
+//            //保存到本地数据库
+//                long commentId=commentDao.insertComment(newComment);
+//                newComment.setComment_id(commentId);
+//                // 添加到当前列表（立即显示）
+//                List<CommentInfo> currentComments = new ArrayList<>();
+//                if (viewModel.getCommentLiveData().getValue() != null) {
+//                    currentComments.addAll(viewModel.getCommentLiveData().getValue());
+//                }
+//                currentComments.add(newComment);
+//
+//                requireActivity().runOnUiThread(() -> {
+//                    viewModel.getCommentLiveData().setValue(currentComments);
+//                    Toast.makeText(getContext(), "评论添加成功", Toast.LENGTH_SHORT).show();
+//                });
+//                //上传到服务器
+//            Call<CommentInfo> call = apiService.createComment(newComment);
+//            call.enqueue(new Callback<CommentInfo>() {
+//                @Override
+//                public void onResponse(Call<CommentInfo> call, Response<CommentInfo> response) {
+//                    if (response.isSuccessful()) {
+//                        // 同步成功，更新本地同步状态
+//                        new Thread(() -> {
+//                            commentDao.markAsSynced(newComment.getComment_id());
+//                        }).start();
+//                    } else {
+//                        Log.e("CommentSync", "评论上传失败: " + response.code());
+//                    }
+//                }
+//
+//                @Override
+//                public void onFailure(Call<CommentInfo> call, Throwable t) {
+//                    Log.e("CommentSync", "网络错误: " + t.getMessage());
+//                }
+//            });
+//            requireActivity().runOnUiThread(() -> {
+//                Toast.makeText(getContext(), "评论添加成功", Toast.LENGTH_SHORT).show();
+//                loadComments(); // 刷新评论列表
+//            });
+//        }).start();
         new Thread(() -> {
-            int userId = MapApp.getUserID();
+            User user = getCurrentUser();  // 使用全局用户
 
-            // 1. 创建数据库实体CommentInfo
-            CommentInfo newComment = new CommentInfo(noteId, content, userId);
-            newComment.setUsername(getCurrentUserName()); // 设置用户名
-            // 新增：设置头像字段，保证一级评论也有头像
-            UserDao userDao = MapApp.getAppDb().userDao();
-            User user = userDao.findById(userId);
-            if (user != null) {
-                newComment.setAvatar(user.getAvatar());
+            CommentInfo newComment = new CommentInfo(noteId, content, user.getUid());
+            newComment.setUsername(user.getName());
+            newComment.setAvatar(user.getAvatar());
+
+            long commentId = commentDao.insertComment(newComment);
+            newComment.setComment_id(commentId);
+
+            // 添加到当前列表
+            List<CommentInfo> currentComments = new ArrayList<>();
+            if (viewModel.getCommentLiveData().getValue() != null) {
+                currentComments.addAll(viewModel.getCommentLiveData().getValue());
             }
-
-            // 2. 保存到数据库
-            commentDao.insertComment(newComment);
+            currentComments.add(newComment);
 
             requireActivity().runOnUiThread(() -> {
-                Toast.makeText(getContext(), "评论添加成功", Toast.LENGTH_SHORT).show();
-                loadComments(); // 刷新评论列表
+                viewModel.getCommentLiveData().setValue(currentComments);
+                adapter.updateComments(convertToUiModel(currentComments));
+            });
+
+            // 异步上传到服务器
+            Call<CommentInfo> call = apiService.createComment(newComment);
+            call.enqueue(new Callback<CommentInfo>() {
+                @Override
+                public void onResponse(Call<CommentInfo> call, Response<CommentInfo> response) {
+                    if (response.isSuccessful()) {
+                        new Thread(() -> {
+                            commentDao.markAsSynced(newComment.getComment_id());
+                        }).start();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<CommentInfo> call, Throwable t) {
+                    // 失败处理
+                }
             });
         }).start();
-    }
 
+    }
+    private User getCurrentUser() {
+        // 1. 尝试从ViewModel获取用户信息（来自服务器）
+        User user = viewModel.getUserLiveData().getValue();
+        if (user != null) {
+            return user;
+        }
+
+        // 2. 尝试从本地数据库获取
+        UserDao userDao = MapApp.getAppDb().userDao();
+        user = userDao.findById(MapApp.getUserID());
+        if (user != null) {
+            return user;
+        }
+
+        // 3. 创建默认用户（当服务器和本地都不可用时）
+        User defaultUser = new User("用户" + MapApp.getUserID(),  // account 参数
+                "" );
+        defaultUser.setUid(MapApp.getUserID());
+        defaultUser.setAccount("用户" + MapApp.getUserID());
+        defaultUser.setName("用户" + MapApp.getUserID());
+        return defaultUser;
+    }
     private String getCurrentUserName() {
         // 查询当前用户信息
         UserDao userDao = MapApp.getAppDb().userDao();

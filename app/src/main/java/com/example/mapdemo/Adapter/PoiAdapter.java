@@ -23,6 +23,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -42,6 +43,7 @@ import com.example.mapdemo.Database.CommentInfo;
 import com.example.mapdemo.Database.UserDao;
 import com.example.mapdemo.Adapter.CommentsAdapter;
 import com.baidu.mapapi.clusterutil.ui.Comment;
+import com.example.mapdemo.ViewModel.MyViewModel;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import android.widget.EditText;
 import android.view.WindowManager;
@@ -50,6 +52,7 @@ import android.os.Looper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import android.widget.Toast;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.ArrayList;
 
@@ -58,6 +61,7 @@ import org.w3c.dom.Text;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Set;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -72,13 +76,17 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
     FragmentManager fragmentManager;
     CountInterface countInterface;
     FragmentHelper fragmentHelper;
+    private MyViewModel viewModel;
+    private Map<Long, Integer> commentCountMap = new HashMap<>(); // 存储笔记ID与评论数量的映射
+    private Set<Long> requestedNoteIds = new HashSet<>(); // 避免重复请求
 
-    public PoiAdapter(List<NoteEntity> mlist, Context context,CountInterface countInterface,FragmentHelper fragmentHelper) {
+    public PoiAdapter(List<NoteEntity> mlist, Context context,CountInterface countInterface,FragmentHelper fragmentHelper,MyViewModel viewModel) {
         Mlist = mlist;
         this.context = context;
         inflater= LayoutInflater.from(context);
         this.countInterface=countInterface;
         this.fragmentHelper=fragmentHelper;
+        this.viewModel = viewModel;
     }
 
     public PoiAdapter(List<NoteEntity> mList, FragmentActivity activity, CountInterface countInterface, MyAdapter.FragmentHelper fragmentHelper) {
@@ -164,14 +172,51 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
 
             }
         });
+        NoteEntity note = Mlist.get(position);
+        long noteId = note.getId();
         // 设置评论数量
-        int commentCount = getTotalCommentCount(Mlist.get(position).getId());
-        holder.tvCommentCount.setText(commentCount + "条评论");
+        if (commentCountMap.containsKey(noteId)) {
+            int count = commentCountMap.get(noteId);
+            holder.tvCommentCount.setText(count + "条评论");
+        } else {
+            holder.tvCommentCount.setText("加载中...");
+            fetchCommentCount(noteId); // 发起网络请求获取评论数量
+        }
         // 评论按钮点击事件
         holder.btnComment.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 showCommentsBottomSheet(Mlist.get(position).getId());
+            }
+        });
+    }
+
+    private void fetchCommentCount(long noteId) {
+        if (requestedNoteIds.contains(noteId)) return;
+        requestedNoteIds.add(noteId);
+
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.getCommentCount(noteId).enqueue(new Callback<Integer>() {
+            @Override
+            public void onResponse(Call<Integer> call, Response<Integer> response) {
+                requestedNoteIds.remove(noteId);
+                if (response.isSuccessful() && response.body() != null) {
+                    int count = response.body();
+                    commentCountMap.put(noteId, count);
+                    // 更新对应位置的评论数量显示
+                    for (int i = 0; i < Mlist.size(); i++) {
+                        if (Mlist.get(i).getId() == noteId) {
+                            notifyItemChanged(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Integer> call, Throwable t) {
+                requestedNoteIds.remove(noteId);
+                Log.e("CommentCount", "获取评论数量失败: " + t.getMessage());
             }
         });
     }
@@ -265,63 +310,109 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
         Button btnSend = dialogView.findViewById(R.id.btn_send);
         rvComments.setLayoutManager(new LinearLayoutManager(activity));
         // 加载评论内容
-        new Thread(() -> {
-            AppDatabase db = MapApp.getAppDb();
-            List<CommentInfo> commentInfos = db.commentDao().getCommentsByPostId(noteId);
-            List<Comment> comments = buildCommentHierarchy(commentInfos, db.userDao());
-            activity.runOnUiThread(() -> {
-                CommentsAdapter adapter = new CommentsAdapter(
-                        comments,
-                        noteId,
-                        this::buildCommentHierarchy,
-                        () -> refreshCommentCountOnMainThread(noteId),
-                        null
-                );
-                rvComments.setAdapter(adapter);
-            });
-        }).start();
+        // 1. 从服务器加载评论
+        loadCommentsFromServer(noteId, rvComments, activity);
+
         btnSend.setOnClickListener(v -> {
             String content = etInput.getText().toString().trim();
             if (content.isEmpty()) return;
-            int userId = MapApp.getUserID();
+
+            // 2. 发送评论到服务器
+            sendCommentToServer(noteId, content, rvComments, activity);
+            etInput.setText("");
             new Thread(() -> {
-                AppDatabase db = MapApp.getAppDb();
-                User user = db.userDao().findById(userId);
-                if (user == null) return;
-                CommentInfo newComment = new CommentInfo(noteId, content, userId);
-                newComment.setUsername(user.getName() != null && !user.getName().isEmpty() ? user.getName() : user.getAccount());
-                newComment.setAvatar(user.getAvatar()); // 插入时赋值avatar
-                db.commentDao().insertComment(newComment);
-                List<CommentInfo> commentInfos = db.commentDao().getCommentsByPostId(noteId);
-                List<Comment> comments = buildCommentHierarchy(commentInfos, db.userDao());
-                activity.runOnUiThread(() -> {
-                    CommentsAdapter adapter = new CommentsAdapter(
-                            comments,
-                            noteId,
-                            this::buildCommentHierarchy,
-                            ()-> refreshCommentCountOnMainThread(noteId),
-                            null
-                    );
-                    rvComments.setAdapter(adapter);
-                    etInput.setText("");
-                    refreshCommentCountOnMainThread(noteId); // 实时刷新评论数量
-                });
+                // 插入评论后，重新加载评论
+                loadCommentsFromServer(noteId, rvComments, activity);
+
             }).start();
         });
+
+
         bottomSheet.show();
     }
+    private void loadCommentsFromServer(long noteId, RecyclerView rvComments, Activity activity) {
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.getCommentsByPostId(noteId).enqueue(new Callback<List<CommentInfo>>() {
+            @Override
+            public void onResponse(Call<List<CommentInfo>> call, Response<List<CommentInfo>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // 在后台线程构建评论树
+                    List<CommentInfo> commentsFromServer = response.body();
+                    Log.d("CommentLoad", "Received " + commentsFromServer.size() + " comments");
+                    new Thread(() -> {
+                        List<Comment> comments = buildCommentHierarchy(response.body(), MapApp.getAppDb().userDao());
+                        activity.runOnUiThread(() -> {
+                            Log.d("CommentLoad", "Building comment tree with " + comments.size() + " root comments");
+                            CommentsAdapter adapter = new CommentsAdapter(
+                                    comments,
+                                    noteId,
+                                    PoiAdapter.this::buildCommentHierarchy,
+                                    () -> refreshCommentCountOnMainThread(noteId),
+                                    null,
+                                    viewModel
+                            );
+                            rvComments.setAdapter(adapter);
+                        });
+                    }).start();
+                } else {
+                    Log.e("CommentLoad", "Failed to load comments: " + response.code());
+                    Toast.makeText(activity, "加载评论失败: " + response.code(), Toast.LENGTH_SHORT).show();
+                }
+            }
 
+            @Override
+            public void onFailure(Call<List<CommentInfo>> call, Throwable t) {
+                Toast.makeText(activity, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void sendCommentToServer(long noteId, String content, RecyclerView rvComments, Activity activity) {
+        int userId = MapApp.getUserID();
+
+        new Thread(() -> {
+            AppDatabase db = MapApp.getAppDb();
+            User user = db.userDao().findById(userId);
+            if (user == null) return;
+
+            CommentInfo newComment = new CommentInfo(noteId, content, userId);
+            newComment.setUsername(user.getName() != null && !user.getName().isEmpty()
+                    ? user.getName() : user.getAccount());
+            newComment.setAvatar(user.getAvatar());
+
+            ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+            apiService.createComment(newComment).enqueue(new Callback<CommentInfo>() {
+                @Override
+                public void onResponse(Call<CommentInfo> call, Response<CommentInfo> response) {
+                    if (response.isSuccessful()) {
+                        // 评论发送成功，重新加载评论
+                        loadCommentsFromServer(noteId, rvComments, activity);
+                        refreshCommentCountOnMainThread(noteId);
+                    } else {
+                        Toast.makeText(activity, "发送失败: " + response.code(), Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<CommentInfo> call, Throwable t) {
+                    Toast.makeText(activity, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
     // 构建评论树
     private List<Comment> buildCommentHierarchy(List<CommentInfo> entities, UserDao userDao) {
         Map<Long, List<CommentInfo>> repliesMap = new HashMap<>();
-        Map<Integer, String> userIdToName = new HashMap<>();
-        List<User> users = userDao.getAll();
-        for (User user : users) {
-            userIdToName.put(user.getUid(), user.getName());
-        }
+//        Map<Integer, String> userIdToName = new HashMap<>();
+//        List<User> users = userDao.getAll();
+//        for (User user : users) {
+//            userIdToName.put(user.getUid(), user.getName());
+//        }
         for (CommentInfo entity : entities) {
             Long parentId = entity.getParentcomment_id();
-            if (parentId != null) {
+            Log.d("CommentLoad", "Comment ID: " + entity.getComment_id() +
+                    ", Parent ID: " + parentId);
+            if (parentId != null&& parentId > 0) {
                 if (!repliesMap.containsKey(parentId)) {
                     repliesMap.put(parentId, new ArrayList<>());
                 }
@@ -330,36 +421,75 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
         }
         List<Comment> rootComments = new ArrayList<>();
         for (CommentInfo entity : entities) {
-            if (entity.getParentcomment_id() == null) {
+            Long parentId = entity.getParentcomment_id();
+
+            // 根评论条件：没有父评论或父评论为0/null
+            if (parentId == null || parentId == 0) {
+                // 确保用户名不为空
                 String userName = entity.getUsername();
                 if (userName == null || userName.isEmpty()) {
-                    userName = userIdToName.getOrDefault(entity.getUser_id(), "未知用户");
+                    // 如果服务器没有提供用户名，尝试从本地获取
+                    User user = MapApp.getAppDb().userDao().findById(entity.getUser_id());
+                    userName = (user != null && user.getName() != null) ?
+                            user.getName() : "未知用户";
+                    Log.d("CommentLoad", "Fetched username from local: " + userName);
                 }
+
                 Comment comment = Comment.fromEntity(entity, userName);
-                loadRepliesRecursive(comment, repliesMap, userIdToName);
+                loadRepliesRecursive(comment, repliesMap);
                 rootComments.add(comment);
+                Log.d("CommentLoad", "Added root comment: " + comment.getContent());
             }
         }
+
+        Log.d("CommentLoad", "Built " + rootComments.size() + " root comments");
         return rootComments;
     }
-    private void loadRepliesRecursive(Comment parent, Map<Long, List<CommentInfo>> repliesMap, Map<Integer, String> userIdToName) {
+    private void loadRepliesRecursive(Comment parent, Map<Long, List<CommentInfo>> repliesMap) {
         List<CommentInfo> childEntities = repliesMap.get(parent.getCommentId());
         if (childEntities != null) {
+            Log.d("CommentLoad", "Found " + childEntities.size() +
+                    " replies for comment " + parent.getCommentId());
+
             for (CommentInfo childEntity : childEntities) {
+                // 确保用户名不为空
                 String userName = childEntity.getUsername();
                 if (userName == null || userName.isEmpty()) {
-                    userName = userIdToName.getOrDefault(childEntity.getUser_id(), "未知用户");
+                    // 如果服务器没有提供用户名，尝试从本地获取
+                    User user = MapApp.getAppDb().userDao().findById(childEntity.getUser_id());
+                    userName = (user != null && user.getName() != null) ?
+                            user.getName() : "未知用户";
                 }
+
                 Comment childComment = Comment.fromEntity(childEntity, userName);
                 parent.getReplies().add(childComment);
-                loadRepliesRecursive(childComment, repliesMap, userIdToName);
+                Log.d("CommentTree", "Added reply: " + childComment.getContent() +
+                        " to comment " + parent.getCommentId());
+
+                // 递归加载子回复
+                loadRepliesRecursive(childComment, repliesMap);
             }
+        } else {
+            Log.d("CommentTree", "No replies found for comment " + parent.getCommentId());
         }
     }
     // 刷新评论数量
     private void refreshCommentCountOnMainThread(long noteId) {
-        new Handler(Looper.getMainLooper()).post(() -> {
-            notifyDataSetChanged();
+        // 从服务器获取最新评论数
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.getCommentCount(noteId).enqueue(new Callback<Integer>() {
+            @Override
+            public void onResponse(Call<Integer> call, Response<Integer> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        notifyDataSetChanged();
+                    });
+                }
+            }
+            @Override
+            public void onFailure(Call<Integer> call, Throwable t) {
+                Log.e("REFRESH_COUNT", "更新评论数失败", t);
+            }
         });
     }
 }

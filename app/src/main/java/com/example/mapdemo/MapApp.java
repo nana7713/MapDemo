@@ -2,18 +2,26 @@ package com.example.mapdemo;
 
 import android.app.Application;
 import android.content.SharedPreferences;
+import android.util.Log;
 
+import androidx.lifecycle.ViewModelProvider;
 import androidx.room.Room;
 
 import com.baidu.mapapi.CoordType;
 import com.baidu.mapapi.SDKInitializer;
 import com.example.mapdemo.Database.AppDatabase;
+import com.example.mapdemo.Database.CommentDao;
+import com.example.mapdemo.Database.CommentInfo;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
+import com.example.mapdemo.ViewModel.MyViewModel;
 import com.iflytek.cloud.SpeechConstant; // 导入语音 SDK 相关类
 import com.iflytek.cloud.SpeechUtility; // 导入语音 SDK 相关类
 
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MapApp extends Application {
     private static AppDatabase db;
@@ -38,6 +46,7 @@ public class MapApp extends Application {
         // 从 SharedPreferences 中读取用户 ID
         SharedPreferences sharedPreferences = getSharedPreferences("spRecord", MODE_PRIVATE);
         UserID = sharedPreferences.getInt("uid", 0);
+        startCommentSyncService();
     }
 
     public static AppDatabase getAppDb() {
@@ -60,5 +69,27 @@ public class MapApp extends Application {
 
     public static MapApp getInstance() {
         return instance;
+    }
+    private void startCommentSyncService() {
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.scheduleAtFixedRate(() -> {
+            // 每1分钟检查一次未同步评论
+            syncUnsyncedComments();
+        }, 0, 1, TimeUnit.MINUTES);
+    }
+
+    public void syncUnsyncedComments() {
+        new Thread(() -> {
+            AppDatabase db = getAppDb();
+            CommentDao commentDao = getAppDb().commentDao();
+            List<CommentInfo> unsyncedComments = commentDao.getUnsyncedComments();
+
+            if (!unsyncedComments.isEmpty()) {
+                Log.d("CommentLoad", "Found " + unsyncedComments.size() + " unsynced comments");
+                MyViewModel viewModel = new ViewModelProvider.AndroidViewModelFactory(this)
+                        .create(MyViewModel.class);
+                viewModel.syncCommentsBatch(unsyncedComments);
+            }
+        }).start();
     }
 }
