@@ -26,4 +26,6 @@ public interface CommentDao {
     void updateComment(CommentInfo comment);
     @Query("SELECT * FROM comments WHERE comment_id = :commentId")
     CommentInfo getCommentById(long commentId);
+    @Query("UPDATE comments SET parentcomment_id = :newId WHERE parentcomment_id = :oldId")
+    void rebindChildren(long oldId, long newId);
 }

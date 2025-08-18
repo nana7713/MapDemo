@@ -372,68 +372,96 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
         }
     }
 
-    private void showReplyBottomSheet(Context context, Long parentCommentId) {
-        Activity activity = (Activity) context;
-        BottomSheetDialog bottomSheet = new BottomSheetDialog(activity);
-        View dialogView = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_comments, null);
-        bottomSheet.setContentView(dialogView);
-        EditText etInput = dialogView.findViewById(R.id.et_comment_input);
-        Button btnSend = dialogView.findViewById(R.id.btn_send);
-        // 隐藏评论列表，只显示输入框
-        RecyclerView rv = dialogView.findViewById(R.id.rv_comment);
-        rv.setVisibility(View.GONE);
-        btnSend.setOnClickListener(v -> {
-            String content = etInput.getText().toString().trim();
-            if (content.isEmpty()) return;
-            int userId = MapApp.getUserID();
-            new Thread(() -> {
-                AppDatabase db = MapApp.getAppDb();
-                User user = db.userDao().findById(userId);
-                if (user == null) return;
-                CommentInfo reply = new CommentInfo();
-                reply.setPost_id(noteId);
-                reply.setUser_id(userId);
-                reply.setComment_content(content);
-                reply.setTimestamp(System.currentTimeMillis());
-                // 修正parentcomment_id赋值，防止为0导致孤儿评论
-                if (parentCommentId != null && parentCommentId != 0) {
-                    reply.setParentcomment_id(parentCommentId);
-                } else {
-                    reply.setParentcomment_id(null);
-                }
-                reply.setSynced(false);
-                reply.setUsername(user.getName() != null && !user.getName().isEmpty() ? user.getName() : user.getAccount());
-                reply.setAvatar(user.getAvatar()); // 新增：设置头像字段
-                if (parentCommentId != null && parentCommentId != 0) {
-                    CommentInfo parentComment = db.commentDao().getCommentById(parentCommentId);
-                    if (parentComment == null) {
-                        activity.runOnUiThread(() ->
-                                Toast.makeText(activity, "回复的评论不存在", Toast.LENGTH_SHORT).show());
-                        return;
-                    }
-                }
-                db.commentDao().insertComment(reply);
-                if (viewModel != null) {
-                    viewModel.syncComment(reply, () -> {
-                        // 刷新评论树
-                        List<CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
-                        List<Comment> newComments = buildHierarchyFunc.apply(newEntities, db.userDao());
-                        activity.runOnUiThread(() -> {
-                            updateComments(newComments);
-                            bottomSheet.dismiss();
-                            // 新增：回调外层刷新评论数量
-                            if (onCommentChanged != null) onCommentChanged.run();
-                        });
-                    });
-                } else {
-                    // 如果viewModel不可用，使用全局同步
-                    MapApp.getInstance().syncUnsyncedComments();
-                }
-//                // 重新查询并刷新评论树
-//                List<com.example.mapdemo.Database.CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
-//                List<com.baidu.mapapi.clusterutil.ui.Comment> newComments = buildHierarchyFunc.apply(newEntities, db.userDao());
+//    private void showReplyBottomSheet(Context context, Long parentCommentId) {
+//        Activity activity = (Activity) context;
+//        BottomSheetDialog bottomSheet = new BottomSheetDialog(activity);
+//        View dialogView = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_comments, null);
+//        bottomSheet.setContentView(dialogView);
+//        EditText etInput = dialogView.findViewById(R.id.et_comment_input);
+//        Button btnSend = dialogView.findViewById(R.id.btn_send);
+//        // 隐藏评论列表，只显示输入框
+//        RecyclerView rv = dialogView.findViewById(R.id.rv_comment);
+//        rv.setVisibility(View.GONE);
+//        btnSend.setOnClickListener(v -> {
+//            String content = etInput.getText().toString().trim();
+//            if (content.isEmpty()) return;
+//            int userId = MapApp.getUserID();
+//            new Thread(() -> {
+//                AppDatabase db = MapApp.getAppDb();
+//                User user = db.userDao().findById(userId);
+//                if (user == null) return;
+//                CommentInfo reply = new CommentInfo();
+//                reply.setPost_id(noteId);
+//                reply.setUser_id(userId);
+//                reply.setComment_content(content);
+//                reply.setTimestamp(System.currentTimeMillis());
+//                // 修正parentcomment_id赋值，防止为0导致孤儿评论
+//                if (parentCommentId != null && parentCommentId != 0) {
+//                    reply.setParentcomment_id(parentCommentId);
+//                } else {
+//                    reply.setParentcomment_id(null);
+//                }
+//                reply.setSynced(false);
+//                reply.setUsername(user.getName() != null && !user.getName().isEmpty() ? user.getName() : user.getAccount());
+//                reply.setAvatar(user.getAvatar()); // 新增：设置头像字段
+//                if (parentCommentId != null && parentCommentId != 0) {
+//                    CommentInfo parentComment = db.commentDao().getCommentById(parentCommentId);
+//                    if (parentComment == null) {
+//                        activity.runOnUiThread(() ->
+//                                Toast.makeText(activity, "回复的评论不存在", Toast.LENGTH_SHORT).show());
+//                        return;
+//                    }
+//                }
+//                db.commentDao().insertComment(reply);
+//                if (viewModel != null) {
+//                    viewModel.syncComment(reply, () -> {
+//                        // 刷新评论树
+//                        List<CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
+//                        List<Comment> newComments = buildHierarchyFunc.apply(newEntities, db.userDao());
+//                        activity.runOnUiThread(() -> {
+//                            updateComments(newComments);
+//                            bottomSheet.dismiss();
+//                            // 新增：回调外层刷新评论数量
+//                            if (onCommentChanged != null) onCommentChanged.run();
+//                        });
+//                    });
+//                } else {
+//                    // 如果viewModel不可用，使用全局同步
+//                    MapApp.getInstance().syncUnsyncedComments();
+//                }
+////                // 重新查询并刷新评论树
+////                List<com.example.mapdemo.Database.CommentInfo> newEntities = db.commentDao().getCommentsByPostId(noteId);
+////                List<com.baidu.mapapi.clusterutil.ui.Comment> newComments = buildHierarchyFunc.apply(newEntities, db.userDao());
+////                activity.runOnUiThread(() -> {
+////                    updateComments(newComments);
+////                    bottomSheet.dismiss();
+////                    // 新增：回调外层刷新评论数量
+////                    if (onCommentChanged != null) onCommentChanged.run();
+////                });
+////            }).start();
+////        });
+////        bottomSheet.show();
+//                // 创建新的评论对象
+//                Comment newComment = Comment.fromEntity(reply, reply.getUsername());
+//
 //                activity.runOnUiThread(() -> {
-//                    updateComments(newComments);
+//                    // 找到父评论的位置
+//                    int parentPosition = findCommentPosition(parentCommentId);
+//
+//                    if (parentPosition != -1) {
+//                        // 获取父评论
+//                        Comment parentComment = comments.get(parentPosition);
+//
+//                        // 添加新回复
+//                        if (parentComment.getReplies() == null) {
+//                            parentComment.setReplies(new ArrayList<>());
+//                        }
+//                        parentComment.getReplies().add(newComment);
+//
+//                        // 更新嵌套适配器
+//                        notifyItemChanged(parentPosition);
+//                    }
+//
 //                    bottomSheet.dismiss();
 //                    // 新增：回调外层刷新评论数量
 //                    if (onCommentChanged != null) onCommentChanged.run();
@@ -441,35 +469,92 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.ViewHo
 //            }).start();
 //        });
 //        bottomSheet.show();
-                // 创建新的评论对象
-                Comment newComment = Comment.fromEntity(reply, reply.getUsername());
+//    }
+private void showReplyBottomSheet(Context context, Long parentCommentId) {
+    Activity activity = (Activity) context;
+    BottomSheetDialog bottomSheet = new BottomSheetDialog(activity);
+    View dialogView = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_comments, null);
+    bottomSheet.setContentView(dialogView);
+    EditText etInput = dialogView.findViewById(R.id.et_comment_input);
+    Button btnSend = dialogView.findViewById(R.id.btn_send);
+    RecyclerView rv = dialogView.findViewById(R.id.rv_comment);
+    rv.setVisibility(View.GONE);
 
-                activity.runOnUiThread(() -> {
-                    // 找到父评论的位置
-                    int parentPosition = findCommentPosition(parentCommentId);
+    btnSend.setOnClickListener(v -> {
+        String content = etInput.getText().toString().trim();
+        if (content.isEmpty()) return;
+        int userId = MapApp.getUserID();
 
-                    if (parentPosition != -1) {
-                        // 获取父评论
-                        Comment parentComment = comments.get(parentPosition);
+        // 创建评论对象
+        CommentInfo reply = new CommentInfo();
+        reply.setPost_id(noteId);
+        reply.setUser_id(userId);
+        reply.setComment_content(content);
+        reply.setTimestamp(System.currentTimeMillis());
+        reply.setParentcomment_id(parentCommentId);
+        reply.setSynced(false);
+        AppDatabase db = MapApp.getAppDb();
+        User user = db.userDao().findById(userId);
+        if (user == null) {
+            activity.runOnUiThread(() -> Toast.makeText(activity, "用户不存在", Toast.LENGTH_SHORT).show());
+            return;
+        }
 
-                        // 添加新回复
-                        if (parentComment.getReplies() == null) {
-                            parentComment.setReplies(new ArrayList<>());
+        // 设置用户名和头像
+        reply.setUsername(user.getName());
+        reply.setAvatar(user.getAvatar());
+
+        // 直接从服务器API发送回复
+        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        apiService.createComment(reply).enqueue(new Callback<CommentInfo>() {
+            @Override
+            public void onResponse(Call<CommentInfo> call, Response<CommentInfo> response) {
+                if (response.isSuccessful()) {
+                    // 服务器创建成功
+                    CommentInfo newComment = response.body();
+                    activity.runOnUiThread(() -> {
+                        // 更新UI
+                        int parentPosition = findCommentPosition(parentCommentId);
+                        if (parentPosition != -1) {
+                            Comment parentComment = comments.get(parentPosition);
+                            if (parentComment.getReplies() == null) {
+                                parentComment.setReplies(new ArrayList<>());
+                            }
+
+                            // 添加新回复
+                            Comment newCommentObj = Comment.fromEntity(newComment, newComment.getUsername());
+                            parentComment.getReplies().add(newCommentObj);
+
+                            // 更新嵌套适配器
+                            notifyItemChanged(parentPosition);
                         }
-                        parentComment.getReplies().add(newComment);
 
-                        // 更新嵌套适配器
-                        notifyItemChanged(parentPosition);
+                        bottomSheet.dismiss();
+                        if (onCommentChanged != null) onCommentChanged.run();
+                    });
+                } else {
+                    // 处理服务器错误
+                    try {
+                        String errorBody = response.errorBody().string();
+                        activity.runOnUiThread(() ->
+                                Toast.makeText(activity, "回复失败: " + errorBody, Toast.LENGTH_LONG).show());
+                    } catch (IOException e) {
+                        activity.runOnUiThread(() ->
+                                Toast.makeText(activity, "回复失败: " + response.code(), Toast.LENGTH_SHORT).show());
                     }
+                }
+            }
 
-                    bottomSheet.dismiss();
-                    // 新增：回调外层刷新评论数量
-                    if (onCommentChanged != null) onCommentChanged.run();
-                });
-            }).start();
+            @Override
+            public void onFailure(Call<CommentInfo> call, Throwable t) {
+                activity.runOnUiThread(() ->
+                        Toast.makeText(activity, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show());
+            }
         });
-        bottomSheet.show();
-    }
+    });
+
+    bottomSheet.show();
+}
     // 新增：递归删除评论及其所有子评论
 //    public void deleteCommentAndChildren(long commentId) {
 //        CommentDao commentDao = MapApp.getAppDb().commentDao();

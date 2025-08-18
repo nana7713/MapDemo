@@ -207,7 +207,16 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
     }
     public void syncComment(CommentInfo comment,Runnable onSuccess) {
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-        Call<CommentInfo> call = apiService.createComment(comment);
+        // 构造用于创建的payload：不携带本地自增ID，避免后端冲突
+        CommentInfo serverComment = new CommentInfo();
+        serverComment.setPost_id(comment.getPost_id());
+        serverComment.setUser_id(comment.getUser_id());
+        serverComment.setComment_content(comment.getComment_content());
+        serverComment.setTimestamp(comment.getTimestamp());
+        serverComment.setParentcomment_id(comment.getParentcomment_id());
+        serverComment.setUsername(comment.getUsername());
+        serverComment.setAvatar(comment.getAvatar());
+        Call<CommentInfo> call = apiService.createComment(serverComment);
         call.enqueue(new Callback<CommentInfo>() {
             @Override
             public void onResponse(Call<CommentInfo> call, Response<CommentInfo> response) {
@@ -215,16 +224,23 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
                     // 同步成功，更新本地数据库
                     new Thread(() -> {
                         CommentInfo syncedComment = response.body();
+                        CommentDao commentDao = MapApp.getAppDb().commentDao();
+
+                        // 更新本地评论ID
                         if (syncedComment != null) {
-                            // 更新评论ID
-                            if (syncedComment.getComment_id() != comment.getComment_id()) {
-                                comment.setComment_id(syncedComment.getComment_id());
-                            }
-                            // 标记为已同步
-                            comment.setSynced(true);
-                            MapApp.getAppDb().commentDao().updateComment(comment);
+                            // 1. 更新所有子评论的父ID
+                            commentDao.rebindChildren(comment.getComment_id(), syncedComment.getComment_id());
+
+                            // 2. 删除旧的本地评论
+                            commentDao.deleteCommentById(comment.getComment_id());
+
+                            // 3. 插入新的服务器评论
+                            syncedComment.setSynced(true);
+                            commentDao.insertComment(syncedComment);
                         }
+
                         syncStatusLiveData.postValue(true);
+                        if (onSuccess != null) onSuccess.run();
                     }).start();
                 } else {
                     syncStatusLiveData.postValue(false);
