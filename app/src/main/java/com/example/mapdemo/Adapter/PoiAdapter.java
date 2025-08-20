@@ -386,8 +386,9 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
                 public void onResponse(Call<CommentInfo> call, Response<CommentInfo> response) {
                     if (response.isSuccessful()) {
                         // 评论发送成功，重新加载评论
+                        fetchCommentCount(noteId);
                         loadCommentsFromServer(noteId, rvComments, activity);
-                        refreshCommentCountOnMainThread(noteId);
+                        //refreshCommentCountOnMainThread(noteId);
                     } else {
                         Toast.makeText(activity, "发送失败: " + response.code(), Toast.LENGTH_SHORT).show();
                     }
@@ -481,8 +482,16 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
             @Override
             public void onResponse(Call<Integer> call, Response<Integer> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    int count = response.body();
+                    commentCountMap.put(noteId, count);
+
                     new Handler(Looper.getMainLooper()).post(() -> {
-                        notifyDataSetChanged();
+                        for (int i = 0; i < Mlist.size(); i++) {
+                            if (Mlist.get(i).getId() == noteId) {
+                                notifyItemChanged(i);
+                                break;
+                            }
+                        }
                     });
                 }
             }
