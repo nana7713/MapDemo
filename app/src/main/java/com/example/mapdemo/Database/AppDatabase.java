@@ -12,7 +12,7 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 
-@Database(entities = {User.class,NoteEntity.class,CommentInfo.class}, version = 17,exportSchema = false)
+@Database(entities = {User.class,NoteEntity.class,CommentInfo.class}, version = 18,exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract UserDao userDao();
     public abstract NoteDao noteDao();

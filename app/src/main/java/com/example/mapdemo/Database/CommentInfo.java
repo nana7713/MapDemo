@@ -25,7 +25,8 @@ import androidx.room.PrimaryKey;
 
 )
 public class CommentInfo {
-    @PrimaryKey(autoGenerate = true)
+    //@PrimaryKey(autoGenerate = true)
+    @PrimaryKey
     private long comment_id;//评论id
     private long post_id;//帖子id
     private int user_id;//评论的用户id

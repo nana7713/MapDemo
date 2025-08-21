@@ -88,11 +88,7 @@ public interface ApiService {
     // 批量同步评论
     @POST("Comment/sync/batch")
     Call<List<CommentInfo>> syncCommentsBatch(@Body List<CommentInfo> comments);
-    // 增量同步（根据最后同步时间）
-    @GET("Comment/since/{postId}/{lastSyncTime}")
-    Call<List<CommentInfo>> getCommentsSince(
-            @Path("postId") long postId,
-            @Path("lastSyncTime") long lastSyncTime
-    );
+    @GET("Comment/all")
+    Call<List<CommentInfo>> getAllComments();
 
 }

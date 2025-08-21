@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.mapdemo.ApiService;
+import com.example.mapdemo.Database.AppDatabase;
 import com.example.mapdemo.Database.CommentDao;
 import com.example.mapdemo.Database.CommentInfo;
 import com.example.mapdemo.Database.NoteEntity;
@@ -16,6 +17,8 @@ import com.example.mapdemo.RetrofitClient;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.logging.Handler;
+import java.util.stream.Collectors;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -302,18 +305,16 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
                 try {
                     // 1. 从服务器删除
                     Response<Void> response = apiService.deleteComment(commentId).execute();
-
                     if (response.isSuccessful()) {
                         // 2. 从本地数据库删除
                         commentDao.deleteCommentById(commentId);
                         Log.d("DELETE_COMMENT", "评论删除成功: " + commentId);
                     } else {
                         Log.e("DELETE_COMMENT", "评论删除失败: " + response.code());
-                        // TODO: 添加重试逻辑
+
                     }
                 } catch (IOException e) {
                     Log.e("DELETE_COMMENT", "网络错误: " + e.getMessage());
-                    // TODO: 添加重试逻辑
                 }
             }
         }).start();
@@ -323,6 +324,64 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
     }
     public MutableLiveData<User> getUserLiveData() {
         return userLiveData;
+    }
+    public void downloadCommentsFromServer() {
+        new Thread(() -> {
+            try {
+                ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+                AppDatabase db = MapApp.getAppDb();
+
+                // 获取服务器上的所有评论
+                Response<List<CommentInfo>> response = apiService.getAllComments().execute();
+
+                if (response.isSuccessful() && response.body() != null) {
+                    List<CommentInfo> serverComments = response.body();
+                    int downloadedCount = 0;
+                    int skippedCount = 0;
+
+                    // 获取本地所有笔记
+                    List<NoteEntity> localNotes = db.noteDao().getAll();
+                    // 转换为笔记ID列表
+                    List<Long> localNoteIdList = localNotes.stream()
+                            .map(NoteEntity::getId)
+                            .collect(Collectors.toList());
+
+                    for (CommentInfo comment : serverComments) {
+                        // 检查评论对应的笔记是否存在于本地
+                        if (localNoteIdList.contains(comment.getPost_id())) {
+                            // 检查评论是否已存在
+                            CommentInfo existingComment = db.commentDao().getCommentById(comment.getComment_id());
+
+                            if (existingComment == null) {
+                                // 插入新评论
+                                comment.setSynced(true); // 标记为已同步
+                                db.commentDao().insertComment(comment);
+                                downloadedCount++;
+                            } else {
+                                // 更新已存在的评论
+                                existingComment.setComment_content(comment.getComment_content());
+                                existingComment.setTimestamp(comment.getTimestamp());
+                                existingComment.setParentcomment_id(comment.getParentcomment_id());
+                                existingComment.setUsername(comment.getUsername());
+                                existingComment.setAvatar(comment.getAvatar());
+                                existingComment.setSynced(true);
+                                db.commentDao().updateComment(existingComment);
+                                downloadedCount++;
+                            }
+                        } else {
+                            skippedCount++;
+                        }
+                    }
+
+                    Log.d("CommentDownload", "下载完成: " + downloadedCount + " 条评论已下载, " + skippedCount + " 条评论已跳过");
+
+                } else {
+                    Log.e("CommentDownload", "获取服务器评论失败: " + response.code());
+                }
+            } catch (IOException e) {
+                Log.e("CommentDownload", "下载失败: " + e.getMessage());
+            }
+        }).start();
     }
 
 }

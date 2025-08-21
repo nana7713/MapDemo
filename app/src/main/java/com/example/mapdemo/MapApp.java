@@ -74,22 +74,13 @@ public class MapApp extends Application {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             // 每1分钟检查一次未同步评论
-            syncUnsyncedComments();
-        }, 0, 1, TimeUnit.MINUTES);
+            downloadCommentsFromServer();
+        }, 0, 6, TimeUnit.HOURS);
     }
 
-    public void syncUnsyncedComments() {
-        new Thread(() -> {
-            AppDatabase db = getAppDb();
-            CommentDao commentDao = getAppDb().commentDao();
-            List<CommentInfo> unsyncedComments = commentDao.getUnsyncedComments();
-
-            if (!unsyncedComments.isEmpty()) {
-                Log.d("CommentLoad", "Found " + unsyncedComments.size() + " unsynced comments");
-                MyViewModel viewModel = new ViewModelProvider.AndroidViewModelFactory(this)
-                        .create(MyViewModel.class);
-                viewModel.syncCommentsBatch(unsyncedComments);
-            }
-        }).start();
+    private void downloadCommentsFromServer() {
+        MyViewModel viewModel = new ViewModelProvider.AndroidViewModelFactory(this)
+                .create(MyViewModel.class);
+        viewModel.downloadCommentsFromServer();
     }
 }
