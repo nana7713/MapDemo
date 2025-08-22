@@ -90,5 +90,11 @@ public interface ApiService {
     Call<List<CommentInfo>> syncCommentsBatch(@Body List<CommentInfo> comments);
     @GET("Comment/all")
     Call<List<CommentInfo>> getAllComments();
+    @Multipart
+    @POST("user/upload/avatar")
+    Call<ImageUploadResponse> uploadAvatar(
+            @Part("userId") RequestBody userId,
+            @Part MultipartBody.Part file
+    );
 
 }

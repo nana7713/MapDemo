@@ -178,22 +178,6 @@ public class MyViewModel extends androidx.lifecycle.ViewModel {
         });
         return commentLiveData;
     }
-//    public LiveData<Integer> getCommentCount(){
-//        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
-//        apiService.getCommentCount(MapApp.getUserID()).enqueue(new Callback<Integer>() {
-//
-//
-//            @Override
-//            public void onResponse(Call<Integer> call, Response<Integer> response) {
-//                commentCountLiveData.setValue(response.body());
-//            }
-//            @Override
-//            public void onFailure(Call<Integer> call, Throwable t) {
-//                commentCountLiveData.setValue(null);
-//            }
-//        });
-//        return commentCountLiveData;
-//    }
     public LiveData<List<CommentInfo>> getUnsyncedComments(){
         ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
         apiService.getUnsyncedComments().enqueue(new Callback<List<CommentInfo>>() {

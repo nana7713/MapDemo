@@ -2,6 +2,7 @@ package com.example.mapdemo.frame;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -28,11 +29,17 @@ import com.bumptech.glide.Glide;
 import com.example.mapdemo.ApiService;
 import com.example.mapdemo.Database.User;
 import com.example.mapdemo.Database.UserDao;
+import com.example.mapdemo.ImageUploadResponse;
 import com.example.mapdemo.MapApp;
 import com.example.mapdemo.R;
 import com.example.mapdemo.RetrofitClient;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.InputStream;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -62,6 +69,8 @@ public class SetFragment extends Fragment {
     private FloatingActionButton floatingActionButton;
     private String avatarUri;
     User user;
+    private Uri selectedAvatarUri;
+    private ApiService apiService;
 
     public SetFragment() {
         // Required empty public constructor
@@ -119,8 +128,9 @@ public class SetFragment extends Fragment {
         save.setEnabled(false);//先禁用保存按钮，直到数据加载完成
 
         // 创建 Retrofit 服务实例
-        ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
+        //ApiService apiService = RetrofitClient.getClient().create(ApiService.class);
 
+        apiService = RetrofitClient.getClient().create(ApiService.class);
         // 调用上传笔记的方法
         Call<User> call = apiService.getUserById(MapApp.getUserID());
         call.enqueue(new Callback<User>() {     // Callback<T> 的 T = User
@@ -128,8 +138,25 @@ public class SetFragment extends Fragment {
             public void onResponse(Call<User> call, Response<User> response) {
                 if (response.isSuccessful() && response.body() != null){
                     user = response.body();
-
-                save.setEnabled(true);}
+                save.setEnabled(true);
+                    if (user.getName() != null) Eusername.setText(user.getName());
+                    if (user.getPlace() != null) Eplace.setText(user.getPlace());
+                    if (user.getAge() != null) Eage.setText(user.getAge());
+                    if (user.getSlogan() != null) Eslogan.setText(user.getSlogan());
+                    if (user.getGender() != null) {
+                        if (user.getGender().equals("男")) male.setChecked(true);
+                        else if (user.getGender().equals("女")) female.setChecked(true);
+                    }
+                    if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
+                        // 如果头像URL是相对路径，添加服务器基础URL
+                        String avatarUrl = user.getAvatar();
+                        if (!avatarUrl.startsWith("http")) {
+                            avatarUrl = RetrofitClient.BASE_URL + avatarUrl;
+                        }
+                        Glide.with(getActivity()).load(avatarUrl).into(avatar);
+                        avatarUri = user.getAvatar();
+                    }
+                }
             }
 
             @Override
@@ -147,6 +174,7 @@ public class SetFragment extends Fragment {
                         Log.d("PhotoPicker", "Selected URI: " + uri);
                         Glide.with(getActivity()).load(uri).into(avatar);
                         avatarUri= String.valueOf(uri);
+                        selectedAvatarUri = uri; // 保存选中的URI
                     } else {
                         Log.d("PhotoPicker", "No media selected");
                     }
@@ -190,28 +218,14 @@ public class SetFragment extends Fragment {
                     user.setGender("女");
                 if (!TextUtils.isEmpty(slogan))
                     user.setSlogan(slogan);
-                if (!TextUtils.isEmpty(avatarUri))
-                    user.setAvatar(avatarUri);// user 类型为 User
-
-
-
-
-                Call<Void> call = apiService.updateUsers(user);
-                call.enqueue(new Callback<Void>() {
-                    @Override
-                    public void onResponse(Call<Void> call, Response<Void> response) {
-                        Log.d("debug","用户信息更新成功！");
-
-                    }
-
-                    @Override
-                    public void onFailure(Call<Void> call, Throwable t) {
-
-                    }
-                });
-
+                if (selectedAvatarUri != null) {
+                    uploadAvatar(selectedAvatarUri, user.getUid());
+                }else {
+                    // 没有新头像，直接更新用户信息
+                    updateUserInfo(user);
+                }
                 Toast.makeText(getActivity(),"保存成功！",Toast.LENGTH_LONG).show();
-                // 新增：同步更新本地数据库并刷新输入框
+                // 同步更新本地数据库并刷新输入框
                 new Thread(() -> {
                     userDao.updateUser(user);
                     User updated = userDao.findById(user.getUid());
@@ -261,5 +275,89 @@ public class SetFragment extends Fragment {
                 });
             }
         }).start();
+    }
+    private void uploadAvatar(Uri avatarUri, int userId) {
+        try {
+            InputStream inputStream = getActivity().getContentResolver().openInputStream(avatarUri);
+            byte[] bytes = new byte[inputStream.available()];
+            inputStream.read(bytes);
+
+            RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), bytes);
+            MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", "avatar.jpg", requestFile);
+
+            RequestBody userIdBody = RequestBody.create(
+                    MediaType.parse("text/plain"),
+                    String.valueOf(userId)
+            );
+
+            apiService.uploadAvatar(userIdBody, filePart).enqueue(new Callback<ImageUploadResponse>() {
+                @Override
+                public void onResponse(Call<ImageUploadResponse> call, Response<ImageUploadResponse> response) {
+                    if (response.isSuccessful()) {
+                        Log.d("API", "头像上传成功");
+                        // 更新用户头像URL
+                        user.setAvatar(response.body().getImageUrl());
+                        updateUserInfo(user);
+
+                    } else {
+                        // 处理错误响应
+                        try {
+                            String errorBody = response.errorBody().string();
+                            Log.e("API", "头像上传失败：" + errorBody);
+                            Toast.makeText(getActivity(), "头像上传失败", Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e("API", "头像上传失败：" + response.code());
+                            Toast.makeText(getActivity(), "头像上传失败：" + response.code(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ImageUploadResponse> call, Throwable t) {
+                    Log.e("API", "头像上传失败：" + t.getMessage());
+                    Toast.makeText(getActivity(), "头像上传失败：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        } catch (Exception e) {
+            Log.e("AvatarUpload", "处理头像文件失败", e);
+            Toast.makeText(getActivity(), "处理头像文件失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+    private void updateUserInfo(User user) {
+        Call<Void> call = apiService.updateUsers(user);
+        call.enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.d("debug", "用户信息更新成功！");
+
+                    // 更新本地数据库
+                    new Thread(() -> {
+                        userDao.updateUser(user);
+
+                        // 保存成功后跳转回我的页面
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                Toast.makeText(getActivity(), "保存成功！", Toast.LENGTH_LONG).show();
+
+                                FragmentManager fragmentManager = getParentFragmentManager();
+                                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                                fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                                fragmentTransaction.replace(R.id.fragment, MyPageFragment.class, null).commit();
+                            });
+                        }
+                    }).start();
+                } else {
+                    Log.e("debug", "用户信息更新失败：" + response.code());
+                    Toast.makeText(getActivity(), "用户信息更新失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.e("debug", "用户信息更新失败：" + t.getMessage());
+                Toast.makeText(getActivity(), "用户信息更新失败：" + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }
