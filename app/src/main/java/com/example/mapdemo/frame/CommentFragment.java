@@ -253,68 +253,6 @@ public class CommentFragment extends Fragment {
     }
 
     private void addComment(String content) {
-//        new Thread(() -> {
-//            viewModel.getUserByID();
-//            User user = getCurrentUser();
-//            if (user == null) {
-//                Toast.makeText(getContext(), "无法获取用户信息", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-//            //int userId = MapApp.getUserID();
-//
-//            // 创建数据库实体CommentInfo
-//            CommentInfo newComment = new CommentInfo(noteId, content, user.getUid());
-////            newComment.setUsername(getCurrentUserName()); // 设置用户名
-////            // 设置头像字段，保证一级评论也有头像
-////            UserDao userDao = MapApp.getAppDb().userDao();
-////            User user = userDao.findById(userId);
-////            if (user != null) {
-////                newComment.setAvatar(user.getAvatar());
-////            }
-//            newComment.setUsername(user.getName() != null ? user.getName() : user.getAccount());
-//            newComment.setAvatar(user.getAvatar());
-//            newComment.setSynced(false); // 标记为未同步
-//
-//           // new Thread(() -> {
-//            //保存到本地数据库
-//                long commentId=commentDao.insertComment(newComment);
-//                newComment.setComment_id(commentId);
-//                // 添加到当前列表（立即显示）
-//                List<CommentInfo> currentComments = new ArrayList<>();
-//                if (viewModel.getCommentLiveData().getValue() != null) {
-//                    currentComments.addAll(viewModel.getCommentLiveData().getValue());
-//                }
-//                currentComments.add(newComment);
-//
-//                requireActivity().runOnUiThread(() -> {
-//                    viewModel.getCommentLiveData().setValue(currentComments);
-//                    Toast.makeText(getContext(), "评论添加成功", Toast.LENGTH_SHORT).show();
-//                });
-//                //上传到服务器
-//            Call<CommentInfo> call = apiService.createComment(newComment);
-//            call.enqueue(new Callback<CommentInfo>() {
-//                @Override
-//                public void onResponse(Call<CommentInfo> call, Response<CommentInfo> response) {
-//                    if (response.isSuccessful()) {
-//                        // 同步成功，更新本地同步状态
-//                        new Thread(() -> {
-//                            commentDao.markAsSynced(newComment.getComment_id());
-//                        }).start();
-//                    } else {
-//                        Log.e("CommentSync", "评论上传失败: " + response.code());
-//                    }
-//                }
-//
-//                @Override
-//                public void onFailure(Call<CommentInfo> call, Throwable t) {
-//                    Log.e("CommentSync", "网络错误: " + t.getMessage());
-//                }
-//            });
-//            requireActivity().runOnUiThread(() -> {
-//                Toast.makeText(getContext(), "评论添加成功", Toast.LENGTH_SHORT).show();
-//                loadComments(); // 刷新评论列表
-//            });
-//        }).start();
         new Thread(() -> {
             User user = getCurrentUser();  // 使用全局用户
 
