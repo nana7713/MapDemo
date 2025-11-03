@@ -96,5 +96,4 @@ public interface ApiService {
             @Part("userId") RequestBody userId,
             @Part MultipartBody.Part file
     );
-
 }

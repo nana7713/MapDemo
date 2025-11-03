@@ -51,6 +51,8 @@ import android.os.Handler;
 import android.os.Looper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import android.widget.Toast;
+
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -81,6 +83,7 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
     private Set<Long> requestedNoteIds = new HashSet<>(); // 避免重复请求
 
     public PoiAdapter(List<NoteEntity> mlist, Context context,CountInterface countInterface,FragmentHelper fragmentHelper,MyViewModel viewModel) {
+        Collections.reverse(mlist);
         Mlist = mlist;
         this.context = context;
         inflater= LayoutInflater.from(context);
@@ -117,7 +120,11 @@ public class PoiAdapter extends RecyclerView.Adapter<PoiAdapter.MyViewHolder> {
 //        }
 //        Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
         // 处理封面图片加载，添加异常捕获
-        String coverUri = Mlist.get(position).getNote_image_uri();
+        String coverUri=Mlist.get(position).getNote_image_thumbnail_uri();
+        if (coverUri == null ||coverUri.isEmpty())
+        {
+            coverUri = Mlist.get(position).getNote_image_uri();
+        }
         if (coverUri != null && !coverUri.isEmpty()) {
             try {
                 InputStream inputStream = context.getContentResolver().openInputStream(Uri.parse(coverUri));

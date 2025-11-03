@@ -163,7 +163,7 @@ public class PoiFragment extends Fragment {
                     addNoteFragment.setArguments(bundle);
                     fragmentManager = getFragmentManager();
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                    fragmentTransaction.replace(R.id.fragment, addNoteFragment, null).commit();
+                    fragmentTransaction.replace(R.id.fragment, addNoteFragment, null).addToBackStack(null).commit();
                 }
 
             }
