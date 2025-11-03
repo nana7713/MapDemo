@@ -14,45 +14,53 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 合并ndk配置，移除重复的defaultConfig
         ndk {
-            // 设置支持的 SO 库架构（开发者可以根据需要，选择一个或多个平台的 so）
-            abiFilters.addAll(listOf("armeabi", "armeabi-v7a", "arm64-v8a", "x86","x86_64"))
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        }
+    }
+
+    signingConfigs {
+        create("release") {  // 使用create方法创建配置
+            storeFile = file("keystores/release.jks")  // 使用相对路径
+            storePassword = "123456"
+            keyAlias = "key0"
+            keyPassword = "123456"
         }
     }
 
     buildTypes {
-        release {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")  // 正确引用
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+
+        getByName("debug") {
+            isMinifyEnabled = false
+        }
     }
 
     buildFeatures {
         viewBinding = true
-
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    ndkVersion = "25.1.8937393"
-    defaultConfig {
-        ndk {
-            abiFilters.add("armeabi-v7a")
-            abiFilters.add("arm64-v8a")
-        }
 
-
-    }
+    // 移除重复的defaultConfig和ndkVersion
     sourceSets {
         getByName("main") {
             jniLibs.srcDirs("libs")
         }
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -61,38 +69,38 @@ android {
 }
 
 dependencies {
-
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    implementation(files("libs\\BaiduLBS_Android.jar"))
-    implementation(libs.room.common)
-    implementation(libs.room.common.jvm)
-    implementation(files("libs\\Msc.jar"))
+    implementation(files("libs/BaiduLBS_Android.jar"))
+    implementation(files("libs/Msc.jar"))
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
     val room_version = "2.6.1"
-    implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("androidx.room:room-runtime:$room_version")
-
-    // If this project only uses Java source, use the Java annotationProcessor
-    // No additional plugins are necessary
     annotationProcessor("androidx.room:room-compiler:$room_version")
-    implementation("com.github.bumptech.glide:glide:4.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.9.3")
-    implementation("androidx.exifinterface:exifinterface:1.3.3")
-    implementation("com.squareup.retrofit2:retrofit:2.0.2")
-    implementation("com.squareup.retrofit2:converter-gson:2.0.2")
-    implementation ("com.android.support:appcompat-v7")
-    implementation ("com.google.android.material:material:1.9.0")
-    implementation ("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation ("com.android.support:design:25.3.0")
 
+    // 网络相关
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // 图片加载
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+
+    // EXIF
+    implementation("androidx.exifinterface:exifinterface:1.3.6")
+
+
+    // 移除重复和过时的依赖
+    // implementation ("com.android.support:appcompat-v7")  // 已由libs.appcompat替代
+    // implementation ("com.android.support:design:25.3.0") // 已过时
 }
-buildscript {
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.3.0-rc01")
-    }
-}
+
+// 移除buildscript块，除非你真的需要特定版本的Gradle插件

@@ -21,6 +21,8 @@ public class NoteEntity {
     public String title;
     @ColumnInfo(name = "note_image_uri")
     public String note_image_uri;
+    @ColumnInfo(name = "note_image_thumbnail_uri")
+    String note_image_thumbnail_uri;
     @ColumnInfo(name = "create_time")
     public String create_time;
     @ColumnInfo(name = "avatar_uri")
@@ -34,13 +36,14 @@ public class NoteEntity {
     @ColumnInfo(name="poi_id")
     public String poi_id;
 
-    public NoteEntity(String user_name, int user_id, String slogan, String content, String title, String note_image_uri, String create_time, String avatar_uri, double longitude, double latitude, boolean isDirect, String poi_id) {
+    public NoteEntity(String user_name, int user_id, String slogan, String content, String title, String note_image_uri,String note_image_thumbnail_uri,String create_time, String avatar_uri, double longitude, double latitude, boolean isDirect, String poi_id) {
         this.user_name = user_name;
         this.user_id = user_id;
         this.slogan = slogan;
         this.content = content;
         this.title = title;
         this.note_image_uri = note_image_uri;
+        this.note_image_thumbnail_uri=note_image_thumbnail_uri;
         this.create_time = create_time;
         this.avatar_uri = avatar_uri;
         this.longitude = longitude;
@@ -53,22 +56,31 @@ public class NoteEntity {
         return poi_id;
     }
 
+    public String getNote_image_thumbnail_uri() {
+        return note_image_thumbnail_uri;
+    }
+
+    public void setNote_image_thumbnail_uri(String note_image_thumbnail_uri) {
+        this.note_image_thumbnail_uri = note_image_thumbnail_uri;
+    }
+
     @Override
     public String toString() {
         return "NoteEntity{" +
                 "id=" + id +
                 ", user_name='" + user_name + '\'' +
-                ", userId=" + user_id +
+                ", user_id=" + user_id +
                 ", slogan='" + slogan + '\'' +
                 ", content='" + content + '\'' +
                 ", title='" + title + '\'' +
                 ", note_image_uri='" + note_image_uri + '\'' +
+                ", note_image_thumbnail_uri='" + note_image_thumbnail_uri + '\'' +
                 ", create_time='" + create_time + '\'' +
                 ", avatar_uri='" + avatar_uri + '\'' +
                 ", longitude=" + longitude +
                 ", latitude=" + latitude +
                 ", isDirect=" + isDirect +
-                ", PoiId='" + poi_id + '\'' +
+                ", poi_id='" + poi_id + '\'' +
                 '}';
     }
 

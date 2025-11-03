@@ -205,10 +205,23 @@ public class MapFragment extends Fragment  {
         floatButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (MapApp.getUserID()==0){
+                    Toast.makeText(getActivity(),"请先登录",Toast.LENGTH_LONG).show();
+                    Bundle bundle = new Bundle();
+                    bundle.putBoolean("isFromMap",true);
+                    LoginFragment loginFragment=new LoginFragment();
+                    loginFragment.setArguments(bundle);
+                    fragmentManager = getFragmentManager();
+                    FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                    fragmentTransaction.replace(R.id.fragment, loginFragment, null).commit();
+                }else{
+                    fragmentManager = getFragmentManager();
+                    FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                    fragmentTransaction.replace(R.id.fragment, AddNoteFragment.class, null).addToBackStack(null).commit();
 
-                fragmentManager = getFragmentManager();
-                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                fragmentTransaction.replace(R.id.fragment, AddNoteFragment.class, null).addToBackStack(null).commit();
+                }
+
+
             }
         });
         //获取地图实例化
@@ -395,7 +408,7 @@ public class MapFragment extends Fragment  {
         }
         getAllNote(notes->{
             if (notes!=null){
-                showPoiTag(notes);
+                //showPoiTag(notes); 暂时不显示标记
             }
 
         });

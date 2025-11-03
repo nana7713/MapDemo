@@ -396,6 +396,7 @@ public class AddNoteFragment extends Fragment {
                                     content,//输入的笔记内容
                                     title,//标题
                                     noteImageUri,//用户选择图片的uri
+                                    null,//缩略图暂时置空
                                     save_time,//保存时间
                                     user[0].getAvatar(),//头像
                                     finalLng,
@@ -410,6 +411,7 @@ public class AddNoteFragment extends Fragment {
                                     content,//输入的笔记内容
                                     title,//标题
                                     noteImageUri,//用户选择图片的uri
+                                    null,//缩略图暂时置空
                                     save_time,//保存时间
                                     user[0].getAvatar(),//头像
                                     poiLongitude,
