@@ -1,6 +1,7 @@
 package com.example.mapdemo.frame;
 
 import android.annotation.SuppressLint;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
@@ -23,6 +24,11 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.example.mapdemo.Database.NoteDao;
 import com.example.mapdemo.Database.NoteEntity;
 import com.example.mapdemo.MapApp;
@@ -39,6 +45,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -166,10 +173,10 @@ public class ReadFragment extends Fragment {
             viewModel.getNoteByID(id).observe(getViewLifecycleOwner(), noteEntity -> {
                 if (noteEntity != null) {
                     this.noteEntity = noteEntity;
-                    loadNoteImage(noteEntity.note_image_uri);
+                    loadNoteImage(noteEntity.getNote_image_thumbnail_uri());
                 } else {
                     this.noteEntity = noteDao.findById(id);
-                    loadNoteImage(this.noteEntity.note_image_uri);
+                    loadNoteImage(this.noteEntity.getNote_image_thumbnail_uri());
                 }
             });
         }
@@ -184,15 +191,43 @@ public class ReadFragment extends Fragment {
 
     private void loadNoteImage(String imgUrl) {
         if (imgUrl != null && !imgUrl.trim().isEmpty()) {
+            note_image.setClickable(true);
+            note_image.setFocusable(true);
+            note_image.setEnabled(true);
+
+            Log.d("IMAGE_URL", "请求加载图片URL: " + imgUrl);
+            Log.d("IMAGE_URL", "是否是缩略图: " + imgUrl.contains("thumbnail"));
+
             Glide.with(requireContext())
                     .load(imgUrl)
+                    .override(Target.SIZE_ORIGINAL)  // 加载原始尺寸
+                    .listener(new RequestListener<Drawable>() {
+                        @Override
+                        public boolean onLoadFailed(@Nullable GlideException e, Object model,
+                                                    Target<Drawable> target, boolean isFirstResource) {
+                            Log.e("IMAGE_LOAD", "图片加载失败: " + (e != null ? e.getMessage() : "未知错误"));
+                            Log.e("IMAGE_LOAD", "请求的model: " + model);
+                            return false;
+                        }
+
+                        @Override
+                        public boolean onResourceReady(Drawable resource, Object model,
+                                                       Target<Drawable> target, DataSource dataSource,
+                                                       boolean isFirstResource) {
+                            // 图片加载完成后记录尺寸信息
+                            Log.d("IMAGE_LOAD", "图片加载完成: ");
+                            Log.d("IMAGE_LOAD", "  实际尺寸=" + resource.getIntrinsicWidth() + "x" + resource.getIntrinsicHeight());
+                            Log.d("IMAGE_LOAD", "  View尺寸=" + note_image.getWidth() + "x" + note_image.getHeight());
+                            Log.d("IMAGE_LOAD", "  数据源=" + dataSource);
+                            Log.d("IMAGE_LOAD", "  请求的model=" + model);
+
+                            return false;
+                        }
+                    })
                     .into(note_image);
-            // 显示分析按钮（有图片时才显示）
+
             analyzeButton.setVisibility(View.VISIBLE);
             note_image.setVisibility(View.VISIBLE);
-        } else {
-            note_image.setImageDrawable(null);
-            analyzeButton.setVisibility(View.GONE);
         }
     }
 
@@ -214,9 +249,9 @@ public class ReadFragment extends Fragment {
         }
         // 创建带超时设置的 OkHttpClient
         OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)  // 连接超时 30秒
-                .readTimeout(60, TimeUnit.SECONDS)     // 读取超时 60秒
-                .writeTimeout(30, TimeUnit.SECONDS)    // 写入超时 30秒
+                .connectTimeout(50, TimeUnit.SECONDS)  // 连接超时 30秒
+                .readTimeout(100, TimeUnit.SECONDS)     // 读取超时 60秒
+                .writeTimeout(50, TimeUnit.SECONDS)    // 写入超时 30秒
                 .build();
 
         Request request = new Request.Builder()
@@ -253,7 +288,7 @@ public class ReadFragment extends Fragment {
                 parseSegmentsData(json.getJSONArray("segments"));
 
                 // 显示整体分析结果
-                String overallAnalysis = json.getString("overallAnalysis");
+                String overallAnalysis = json.getString("analysis");
                 analysisResult.setText(overallAnalysis);
                 analysisResult.setVisibility(View.VISIBLE);
 
@@ -276,31 +311,63 @@ public class ReadFragment extends Fragment {
     private void parseSegmentsData(JSONArray segmentsArray) throws JSONException {
         segments.clear();
 
+        Log.d("PARSE_DEBUG", "开始解析区域数据，数量: " + segmentsArray.length());
+
         for (int i = 0; i < segmentsArray.length(); i++) {
             JSONObject segmentJson = segmentsArray.getJSONObject(i);
+            int segmentId = segmentJson.getInt("id");
+
+            // 解析bbox - 格式是[x1, y1, x2, y2]
             JSONArray bboxArray = segmentJson.getJSONArray("bbox");
 
-            float[] bbox = {
-                    (float) bboxArray.getDouble(0),
-                    (float) bboxArray.getDouble(1),
-                    (float) bboxArray.getDouble(2),
-                    (float) bboxArray.getDouble(3)
-            };
+            // 验证bbox数组长度
+            if (bboxArray.length() != 4) {
+                Log.e("PARSE_ERROR", "区域 " + segmentId + " bbox长度错误: " + bboxArray.length());
+                continue;
+            }
 
+            float[] bbox = new float[4];
+            for (int j = 0; j < 4; j++) {
+                bbox[j] = (float) bboxArray.getDouble(j);
+            }
+
+            // 记录原始bbox
+            Log.d("PARSE_DEBUG", String.format(
+                    "解析区域 %d: 原始bbox [%.1f, %.1f, %.1f, %.1f]",
+                    segmentId, bbox[0], bbox[1], bbox[2], bbox[3]
+            ));
+
+            // 解析center
             JSONArray centerArray = segmentJson.getJSONArray("center");
-            float[] center = {
-                    (float) centerArray.getDouble(0),
-                    (float) centerArray.getDouble(1)
-            };
+            float[] center = new float[2];
+            center[0] = (float) centerArray.getDouble(0);
+            center[1] = (float) centerArray.getDouble(1);
 
-            Segment segment = new Segment(
-                    segmentJson.getInt("id"),
-                    (float) segmentJson.getDouble("percentage"),
-                    bbox,
-                    center
-            );
-            segments.add(segment);
+            float percentage = (float) segmentJson.getDouble("percentage");
+
+            try {
+                Segment segment = new Segment(
+                        segmentId,
+                        percentage,
+                        bbox,
+                        center
+                );
+
+                segments.add(segment);
+
+                // 验证bbox合理性
+                Log.d("PARSE_DEBUG", String.format(
+                        "区域 %d 解析成功: bbox=%s, 中心=[%.1f,%.1f], 占比=%.1f%%",
+                        segmentId, segment.getBboxString(),
+                        center[0], center[1], percentage
+                ));
+
+            } catch (IllegalArgumentException e) {
+                Log.e("PARSE_ERROR", "区域 " + segmentId + " 创建失败: " + e.getMessage());
+            }
         }
+
+        Log.d("PARSE_DEBUG", "解析完成，共 " + segments.size() + " 个区域");
     }
 
     private void showSegmentAnalysis(Segment segment) {
@@ -308,11 +375,12 @@ public class ReadFragment extends Fragment {
             Toast.makeText(getContext(), "请先进行图片分析", Toast.LENGTH_SHORT).show();
             return;
         }
-
+        Toast.makeText(getContext(), "开始分析区域 " + segment.getId() + "...", Toast.LENGTH_SHORT).show();
         showLoading("分析区域中...");
 
         JSONObject requestBody = new JSONObject();
         try {
+
             requestBody.put("image_url", noteEntity.getNote_image_thumbnail_uri());
             requestBody.put("segment_id", segment.getId());
 
@@ -320,8 +388,8 @@ public class ReadFragment extends Fragment {
             android.graphics.RectF bbox = segment.getBbox();
             bboxArray.put(bbox.left);
             bboxArray.put(bbox.top);
-            bboxArray.put(bbox.width());
-            bboxArray.put(bbox.height());
+            bboxArray.put(bbox.right);
+            bboxArray.put(bbox.bottom);
             requestBody.put("bbox", bboxArray);
 
         } catch (JSONException e) {
@@ -344,18 +412,67 @@ public class ReadFragment extends Fragment {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 String result = response.body().string();
+
+                // 添加详细日志
+                Log.d("NETWORK_DEBUG", "HTTP状态码: " + response.code());
+                Log.d("NETWORK_DEBUG", "响应头: " + response.headers());
+                Log.d("NETWORK_DEBUG", "原始响应数据: " + result);
+                Log.d("NETWORK_DEBUG", "响应数据长度: " + (result != null ? result.length() : 0));
+
                 requireActivity().runOnUiThread(() -> {
                     hideLoading();
                     try {
-                        JSONObject json = new JSONObject(result);
-                        if (json.getBoolean("success")) {
-                            String segmentAnalysis = json.getString("segmentAnalysis");
-                            showSegmentAnalysisDialog(segment, segmentAnalysis);
-                        } else {
-                            Toast.makeText(getContext(), "区域分析失败", Toast.LENGTH_SHORT).show();
+                        // 检查响应是否为空
+                        if (result == null || result.trim().isEmpty()) {
+                            Log.e("NETWORK_DEBUG", "响应数据为空");
+                            Toast.makeText(getContext(), "服务器返回空数据", Toast.LENGTH_SHORT).show();
+                            return;
                         }
+
+                        Log.d("NETWORK_DEBUG", "开始解析JSON...");
+                        JSONObject json = new JSONObject(result);
+
+                        // 打印所有JSON键
+                        Log.d("NETWORK_DEBUG", "JSON键列表:");
+                        Iterator<String> keys = json.keys();
+                        while (keys.hasNext()) {
+                            String key = keys.next();
+                            Object value = json.get(key);
+                            Log.d("NETWORK_DEBUG", "Key: " + key + ", Value类型: " + value.getClass().getSimpleName() + ", Value: " + value);
+                        }
+
+                        // 检查success字段
+                        if (json.has("success")) {
+                            boolean success = json.getBoolean("success");
+                            Log.d("NETWORK_DEBUG", "success字段值: " + success);
+
+                            if (success) {
+                                // 检查analysis字段
+                                if (json.has("analysis")) {
+                                    String segmentAnalysis = json.getString("analysis");
+                                    Log.d("NETWORK_DEBUG", "analysis字段内容: " + segmentAnalysis);
+                                    showSegmentAnalysisDialog(segment, segmentAnalysis);
+                                } else {
+                                    Log.e("NETWORK_DEBUG", "JSON中没有analysis字段");
+                                    Toast.makeText(getContext(), "响应缺少analysis字段", Toast.LENGTH_SHORT).show();
+                                }
+                            } else {
+                                String error = json.has("error") ? json.getString("error") : "未知错误";
+                                Log.e("NETWORK_DEBUG", "服务器返回错误: " + error);
+                                Toast.makeText(getContext(), "区域分析失败: " + error, Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Log.e("NETWORK_DEBUG", "JSON中没有success字段");
+                            Toast.makeText(getContext(), "响应格式错误", Toast.LENGTH_SHORT).show();
+                        }
+
                     } catch (JSONException e) {
-                        Toast.makeText(getContext(), "数据解析失败", Toast.LENGTH_SHORT).show();
+                        Log.e("NETWORK_DEBUG", "JSON解析异常: " + e.getMessage());
+                        Log.e("NETWORK_DEBUG", "异常堆栈: ", e);
+                        Toast.makeText(getContext(), "数据解析失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Log.e("NETWORK_DEBUG", "其他异常: " + e.getMessage());
+                        Toast.makeText(getContext(), "处理响应失败", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -364,7 +481,8 @@ public class ReadFragment extends Fragment {
             public void onFailure(Call call, IOException e) {
                 requireActivity().runOnUiThread(() -> {
                     hideLoading();
-                    Toast.makeText(getContext(), "网络请求失败", Toast.LENGTH_SHORT).show();
+                    Log.e("NETWORK_DEBUG", "网络请求失败: " + e.getMessage());
+                    Toast.makeText(getContext(), "网络请求失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
         });
@@ -379,7 +497,7 @@ public class ReadFragment extends Fragment {
     }
 
     private void showSegmentClickHint() {
-        Toast.makeText(getContext(), "分析完成！点击图片中的黄色区域查看详情", Toast.LENGTH_LONG).show();
+        Toast.makeText(getContext(), "分析完成！点击图片中的红色区域查看详情", Toast.LENGTH_LONG).show();
     }
 
     private void showLoading(String message) {
